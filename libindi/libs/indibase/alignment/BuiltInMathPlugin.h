@@ -29,9 +29,9 @@ class BuiltInMathPlugin : public BasicMathPlugin
     /// \param[in] Beta3 Pointer to the third coordinate in the beta reference frame
     /// \param[in] pAlphaToBeta Pointer to a matrix to receive the Alpha to Beta transformation matrix
     /// \param[in] pBetaToAlpha Pointer to a matrix to receive the Beta to Alpha transformation matrix
-    void CalculateTransformMatrices(const TelescopeDirectionVector &Alpha1, const TelescopeDirectionVector &Alpha2,
-                                    const TelescopeDirectionVector &Alpha3, const TelescopeDirectionVector &Beta1,
-                                    const TelescopeDirectionVector &Beta2, const TelescopeDirectionVector &Beta3,
+    void CalculateTransformMatrices(const MountDirectionVector &Alpha1, const MountDirectionVector &Alpha2,
+                                    const MountDirectionVector &Alpha3, const MountDirectionVector &Beta1,
+                                    const MountDirectionVector &Beta2, const MountDirectionVector &Beta3,
                                     gsl_matrix *pAlphaToBeta, gsl_matrix *pBetaToAlpha);
 };
 

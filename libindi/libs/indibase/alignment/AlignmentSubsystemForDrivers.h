@@ -6,14 +6,14 @@
  *
  * This file provides a shorthand way for drivers to include all the
  * functionality they need to use the INDI Alignment Subsystem
- * Clients should inherit this class alongside INDI::Telescope or a similar class
+ * Clients should inherit this class alongside INDI::Mount or a similar class
  */
 
 #pragma once
 
 #include "MapPropertiesToInMemoryDatabase.h"
 #include "MathPluginManagement.h"
-#include "TelescopeDirectionVectorSupportFunctions.h"
+#include "MountDirectionVectorSupportFunctions.h"
 
 namespace INDI
 {
@@ -26,7 +26,7 @@ namespace AlignmentSubsystem
  */
 class AlignmentSubsystemForDrivers : public MapPropertiesToInMemoryDatabase,
                                      public MathPluginManagement,
-                                     public TelescopeDirectionVectorSupportFunctions
+                                     public MountDirectionVectorSupportFunctions
 {
   public:
     /// \brief Default constructor
@@ -35,13 +35,13 @@ class AlignmentSubsystemForDrivers : public MapPropertiesToInMemoryDatabase,
     virtual ~AlignmentSubsystemForDrivers() {}
 
     /** \brief Initilize alignment subsystem properties. It is recommended to call this function within initProperties() of your primary device
-         * \param[in] pTelescope Pointer to the child INDI::Telecope class
+         * \param[in] pMount Pointer to the child INDI::Telecope class
         */
-    void InitAlignmentProperties(Telescope *pTelescope);
+    void InitAlignmentProperties(Mount *pMount);
 
     /** \brief Call this function from within the ISNewBlob processing path. The function will
          * handle any alignment subsystem related properties.
-         * \param[in] pTelescope Pointer to the child INDI::Telecope class
+         * \param[in] pMount Pointer to the child INDI::Telecope class
          * \param[in] name vector property name
          * \param[in] sizes
          * \param[in] blobsizes
@@ -50,41 +50,41 @@ class AlignmentSubsystemForDrivers : public MapPropertiesToInMemoryDatabase,
          * \param[in] names
          * \param[in] n
         */
-    void ProcessAlignmentBLOBProperties(Telescope *pTelescope, const char *name, int sizes[], int blobsizes[],
+    void ProcessAlignmentBLOBProperties(Mount *pMount, const char *name, int sizes[], int blobsizes[],
                                         char *blobs[], char *formats[], char *names[], int n);
 
     /** \brief Call this function from within the ISNewNumber processing path. The function will
          * handle any alignment subsystem related properties.
-         * \param[in] pTelescope Pointer to the child INDI::Telecope class
+         * \param[in] pMount Pointer to the child INDI::Telecope class
          * \param[in] name vector property name
          * \param[in] values value as passed by the client
          * \param[in] names names as passed by the client
          * \param[in] n number of values and names pair to process.
         */
-    void ProcessAlignmentNumberProperties(Telescope *pTelescope, const char *name, double values[], char *names[],
+    void ProcessAlignmentNumberProperties(Mount *pMount, const char *name, double values[], char *names[],
                                           int n);
 
     /** \brief Call this function from within the ISNewSwitch processing path. The function will
          * handle any alignment subsystem related properties.
-         * \param[in] pTelescope Pointer to the child INDI::Telecope class
+         * \param[in] pMount Pointer to the child INDI::Telecope class
          * \param[in] name vector property name
          * \param[in] states states as passed by the client
          * \param[in] names names as passed by the client
          * \param[in] n number of values and names pair to process.
         */
-    void ProcessAlignmentSwitchProperties(Telescope *pTelescope, const char *name, ISState *states, char *names[],
+    void ProcessAlignmentSwitchProperties(Mount *pMount, const char *name, ISState *states, char *names[],
                                           int n);
 
     /** \brief Call this function from within the ISNewText processing path. The function will
          * handle any alignment subsystem related properties. This only text property at the moment is contained in the
          * config file so this will normally only have work to do when the config file is loaded.
-         * \param[in] pTelescope Pointer to the child INDI::Telecope class
+         * \param[in] pMount Pointer to the child INDI::Telecope class
          * \param[in] name vector property name
          * \param[in] texts texts as passed by the client
          * \param[in] names names as passed by the client
          * \param[in] n number of values and names pair to process.
         */
-    void ProcessAlignmentTextProperties(Telescope *pTelescope, const char *name, char *texts[], char *names[], int n);
+    void ProcessAlignmentTextProperties(Mount *pMount, const char *name, char *texts[], char *names[], int n);
 
     /** \brief Call this function to save persistent alignment related properties.
          * This function should be called from within the saveConfigItems function of your driver.

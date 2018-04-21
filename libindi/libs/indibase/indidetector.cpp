@@ -319,7 +319,7 @@ bool Detector::initProperties()
     /**********************************************/
 
     // Snooped Devices
-    IUFillText(&ActiveDeviceT[0], "ACTIVE_TELESCOPE", "Telescope", "Telescope Simulator");
+    IUFillText(&ActiveDeviceT[0], "ACTIVE_TELESCOPE", "Mount", "Mount Simulator");
     IUFillText(&ActiveDeviceT[1], "ACTIVE_FOCUSER", "Focuser", "Focuser Simulator");
     IUFillText(&ActiveDeviceT[2], "ACTIVE_FILTER", "Filter", "PrimaryDetector Simulator");
     IUFillText(&ActiveDeviceT[3], "ACTIVE_SKYQUALITY", "Sky Quality", "SQM");
@@ -334,7 +334,7 @@ bool Detector::initProperties()
 
     // Snoop properties of interest
     IDSnoopDevice(ActiveDeviceT[0].text, "EQUATORIAL_EOD_COORD");
-    IDSnoopDevice(ActiveDeviceT[0].text, "TELESCOPE_INFO");
+    IDSnoopDevice(ActiveDeviceT[0].text, "MOUNT_INFO");
     IDSnoopDevice(ActiveDeviceT[2].text, "FILTER_SLOT");
     IDSnoopDevice(ActiveDeviceT[2].text, "FILTER_NAME");
     IDSnoopDevice(ActiveDeviceT[3].text, "SKY_QUALITY");
@@ -370,7 +370,7 @@ bool Detector::updateProperties()
         defineNumber(&PrimaryDetector.DetectorSettingsNP);
         defineBLOB(&PrimaryDetector.FitsBP);
 
-        defineSwitch(&TelescopeTypeSP);
+        defineSwitch(&MountTypeSP);
 
         defineSwitch(&UploadSP);
 
@@ -392,7 +392,7 @@ bool Detector::updateProperties()
         if (HasCooler())
             deleteProperty(TemperatureNP.name);
 
-        deleteProperty(TelescopeTypeSP.name);
+        deleteProperty(MountTypeSP.name);
 
         deleteProperty(UploadSP.name);
         deleteProperty(UploadSettingsTP.name);
@@ -418,17 +418,17 @@ bool Detector::ISSnoopDevice(XMLEle *root)
             Dec = newdec;
         }
     }
-    else if (!strcmp(propName, "TELESCOPE_INFO"))
+    else if (!strcmp(propName, "MOUNT_INFO"))
     {
         for (ep = nextXMLEle(root, 1); ep != nullptr; ep = nextXMLEle(root, 0))
         {
             const char *name = findXMLAttValu(ep, "name");
 
-            if (!strcmp(name, "TELESCOPE_APERTURE"))
+            if (!strcmp(name, "MOUNT_APERTURE"))
             {
                 primaryAperture = atof(pcdataXMLEle(ep));
             }
-            else if (!strcmp(name, "TELESCOPE_FOCAL_LENGTH"))
+            else if (!strcmp(name, "MOUNT_FOCAL_LENGTH"))
             {
                 primaryFocalLength = atof(pcdataXMLEle(ep));
             }
@@ -480,7 +480,7 @@ bool Detector::ISNewText(const char *dev, const char *name, char *texts[], char 
             // Update the property name!
             strncpy(EqNP.device, ActiveDeviceT[0].text, MAXINDIDEVICE);
             IDSnoopDevice(ActiveDeviceT[0].text, "EQUATORIAL_EOD_COORD");
-            IDSnoopDevice(ActiveDeviceT[0].text, "TELESCOPE_INFO");
+            IDSnoopDevice(ActiveDeviceT[0].text, "MOUNT_INFO");
             IDSnoopDevice(ActiveDeviceT[2].text, "FILTER_SLOT");
             IDSnoopDevice(ActiveDeviceT[2].text, "FILTER_NAME");
             IDSnoopDevice(ActiveDeviceT[3].text, "SKY_QUALITY");
@@ -616,11 +616,11 @@ bool Detector::ISNewSwitch(const char *dev, const char *name, ISState *states, c
             return true;
         }
 
-        if (!strcmp(name, TelescopeTypeSP.name))
+        if (!strcmp(name, MountTypeSP.name))
         {
-            IUUpdateSwitch(&TelescopeTypeSP, states, names, n);
-            TelescopeTypeSP.s = IPS_OK;
-            IDSetSwitch(&TelescopeTypeSP, nullptr);
+            IUUpdateSwitch(&MountTypeSP, states, names, n);
+            MountTypeSP.s = IPS_OK;
+            IDSetSwitch(&MountTypeSP, nullptr);
             return true;
         }
 
@@ -696,9 +696,9 @@ void Detector::addFITSKeywords(fitsfile *fptr, DetectorDevice *targetDevice, int
     strncpy(fitsString, getDeviceName(), MAXINDIDEVICE);
     fits_update_key_s(fptr, TSTRING, "INSTRUME", fitsString, "PrimaryDetector Name", &status);
 
-    // Telescope
+    // Mount
     strncpy(fitsString, ActiveDeviceT[0].text, MAXINDIDEVICE);
-    fits_update_key_s(fptr, TSTRING, "TELESCOP", fitsString, "Telescope name", &status);
+    fits_update_key_s(fptr, TSTRING, "TELESCOP", fitsString, "Mount name", &status);
 
     // Observer
     strncpy(fitsString, FITSHeaderT[FITS_OBSERVER].text, MAXINDIDEVICE);
@@ -1116,7 +1116,7 @@ bool Detector::saveConfigItems(FILE *fp)
     IUSaveConfigText(fp, &ActiveDeviceTP);
     IUSaveConfigSwitch(fp, &UploadSP);
     IUSaveConfigText(fp, &UploadSettingsTP);
-    IUSaveConfigSwitch(fp, &TelescopeTypeSP);
+    IUSaveConfigSwitch(fp, &MountTypeSP);
 
     return true;
 }

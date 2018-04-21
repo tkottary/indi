@@ -133,7 +133,7 @@ bool STAR2000::initProperties()
     initGuiderProperties(getDeviceName(), MAIN_CONTROL_TAB);
     addDebugControl();
 
-    setDriverInterface(TELESCOPE_INTERFACE);
+    setDriverInterface(MOUNT_INTERFACE);
 
     setDefaultPollingPeriod(250);
 

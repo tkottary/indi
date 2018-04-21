@@ -27,7 +27,7 @@ SET(AlignmentDriver_SRC
     ${CMAKE_SOURCE_DIR}/libs/indibase/alignment/MapPropertiesToInMemoryDatabase.cpp ;
     ${CMAKE_SOURCE_DIR}/libs/indibase/alignment/MathPlugin.cpp ;
     ${CMAKE_SOURCE_DIR}/libs/indibase/alignment/MathPluginManagement.cpp ;
-    ${CMAKE_SOURCE_DIR}/libs/indibase/alignment/TelescopeDirectionVectorSupportFunctions.cpp ;
+    ${CMAKE_SOURCE_DIR}/libs/indibase/alignment/MountDirectionVectorSupportFunctions.cpp ;
     ${CMAKE_SOURCE_DIR}/libs/indibase/alignment/Common.cpp)
 
 IF (UNITY_BUILD)
@@ -64,7 +64,7 @@ install(TARGETS AlignmentDriver
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 install(FILES AlignmentSubsystemForMathPlugins.h AlignmentSubsystemForDrivers.h BasicMathPlugin.h BuiltInMathPlugin.h
               ClientAPIForAlignmentDatabase.h ClientAPIForMathPluginManagement.h Common.h ConvexHull.h DriverCommon.h InMemoryDatabase.h MathPlugin.h
-              MathPluginManagement.h SVDMathPlugin.h TelescopeDirectionVectorSupportFunctions.h MapPropertiesToInMemoryDatabase.h
+              MathPluginManagement.h SVDMathPlugin.h MountDirectionVectorSupportFunctions.h MapPropertiesToInMemoryDatabase.h
         DESTINATION ${INCLUDE_INSTALL_DIR}/libindi/alignment COMPONENT Devel)
 
 ##################################################
@@ -154,8 +154,8 @@ install(TARGETS indi_SVD_MathPlugin
 ########### Skywatcher Alt-Az Mount ##############
 ##################################################
 set(skywatcherAltAzMount_SRCS
-   ${CMAKE_SOURCE_DIR}/drivers/telescope/skywatcherAPIMount.cpp
-   ${CMAKE_SOURCE_DIR}/drivers/telescope/skywatcherAPI.cpp )
+   ${CMAKE_SOURCE_DIR}/drivers/mount/skywatcherAPIMount.cpp
+   ${CMAKE_SOURCE_DIR}/drivers/mount/skywatcherAPI.cpp )
 
 add_executable(indi_skywatcherAltAzMount ${skywatcherAltAzMount_SRCS})
 target_link_libraries(indi_skywatcherAltAzMount indidriver AlignmentDriver)
@@ -166,8 +166,8 @@ install(TARGETS indi_skywatcherAltAzMount RUNTIME DESTINATION bin)
 ########### Skywatcher Alt-Az Simple Mount ##############
 #########################################################
 set(skywatcherAltAzSimple_SRCS
-   ${CMAKE_SOURCE_DIR}/drivers/telescope/skywatcherAltAzSimple.cpp
-   ${CMAKE_SOURCE_DIR}/drivers/telescope/skywatcherAPI.cpp )
+   ${CMAKE_SOURCE_DIR}/drivers/mount/skywatcherAltAzSimple.cpp
+   ${CMAKE_SOURCE_DIR}/drivers/mount/skywatcherAPI.cpp )
 
 add_executable(indi_skywatcherAltAzSimple ${skywatcherAltAzSimple_SRCS})
 target_link_libraries(indi_skywatcherAltAzSimple indidriver)

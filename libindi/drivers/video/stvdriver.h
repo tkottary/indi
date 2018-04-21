@@ -67,9 +67,9 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110 - 1301  USA
 #define ID_UNITS_MASK       0x0002 /* mask for units for scope*/
 #define ID_UNITS_INCHES     0x0002 /*       units were inches*/
 #define ID_UNITS_CM         0x0000 /*       units were cm*/
-#define ID_SCOPE_MASK       0x0004 /* mask for telescope type*/
-#define ID_SCOPE_REFRACTOR  0x0004 /*       scope was refractor*/
-#define ID_SCOPE_REFLECTOR  0x0000 /*       scope was reflector*/
+#define ID_MOUNT_MASK       0x0004 /* mask for telescope type*/
+#define ID_MOUNT_REFRACTOR  0x0004 /*       scope was refractor*/
+#define ID_MOUNT_REFLECTOR  0x0000 /*       scope was reflector*/
 #define ID_DATETIME_MASK    0x0008 /* mask for date/time valid*/
 #define ID_DATETIME_VALID   0x0008 /*       date/time was set*/
 #define ID_DATETIME_INVALID 0x0000 /*       date/time was not set*/

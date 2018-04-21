@@ -25,7 +25,7 @@
 #include <cmath>
 #include <cstring>
 
-extern int DBG_SCOPE_STATUS;
+extern int DBG_MOUNT_STATUS;
 extern int DBG_COMM;
 extern int DBG_MOUNT;
 
@@ -121,7 +121,7 @@ unsigned long Skywatcher::GetRAEncoder()
     read_eqmod();
     RAStep = Revu24str2long(response + 1);
     gettimeofday(&lastreadmotorposition[Axis1], NULL);
-    DEBUGF(DBG_SCOPE_STATUS, "%s() = %ld", __FUNCTION__, RAStep);
+    DEBUGF(DBG_MOUNT_STATUS, "%s() = %ld", __FUNCTION__, RAStep);
     return RAStep;
 }
 
@@ -133,7 +133,7 @@ unsigned long Skywatcher::GetDEEncoder()
 
     DEStep = Revu24str2long(response + 1);
     gettimeofday(&lastreadmotorposition[Axis2], NULL);
-    DEBUGF(DBG_SCOPE_STATUS, "%s() = %ld", __FUNCTION__, DEStep);
+    DEBUGF(DBG_MOUNT_STATUS, "%s() = %ld", __FUNCTION__, DEStep);
     return DEStep;
 }
 
@@ -175,13 +175,13 @@ unsigned long Skywatcher::GetDEEncoderHome()
 
 unsigned long Skywatcher::GetRAPeriod()
 {
-    DEBUGF(DBG_SCOPE_STATUS, "%s() = %ld", __FUNCTION__, RAPeriod);
+    DEBUGF(DBG_MOUNT_STATUS, "%s() = %ld", __FUNCTION__, RAPeriod);
     return RAPeriod;
 }
 
 unsigned long Skywatcher::GetDEPeriod()
 {
-    DEBUGF(DBG_SCOPE_STATUS, "%s() = %ld", __FUNCTION__, DEPeriod);
+    DEBUGF(DBG_MOUNT_STATUS, "%s() = %ld", __FUNCTION__, DEPeriod);
     return DEPeriod;
 }
 
@@ -189,7 +189,7 @@ unsigned long Skywatcher::GetlastreadRAIndexer()
 {
     if (MountCode != 0x04 && MountCode != 0x05)
         throw EQModError(EQModError::ErrInvalidCmd, "Incorrect mount type");
-    DEBUGF(DBG_SCOPE_STATUS, "%s() = %ld", __FUNCTION__, lastreadIndexer[Axis1]);
+    DEBUGF(DBG_MOUNT_STATUS, "%s() = %ld", __FUNCTION__, lastreadIndexer[Axis1]);
     return lastreadIndexer[Axis1];
 }
 
@@ -197,7 +197,7 @@ unsigned long Skywatcher::GetlastreadDEIndexer()
 {
     if (MountCode != 0x04 && MountCode != 0x05)
         throw EQModError(EQModError::ErrInvalidCmd, "Incorrect mount type");
-    DEBUGF(DBG_SCOPE_STATUS, "%s() = %ld", __FUNCTION__, lastreadIndexer[Axis2]);
+    DEBUGF(DBG_MOUNT_STATUS, "%s() = %ld", __FUNCTION__, lastreadIndexer[Axis2]);
     return lastreadIndexer[Axis2];
 }
 
@@ -1533,7 +1533,7 @@ void Skywatcher::StopWaitMotor(SkywatcherAxis axis)
 void Skywatcher::CheckMotorStatus(SkywatcherAxis axis)
 {
     struct timeval now;
-    DEBUGF(DBG_SCOPE_STATUS, "%s() : Axis = %c", __FUNCTION__, AxisCmd[axis]);
+    DEBUGF(DBG_MOUNT_STATUS, "%s() : Axis = %c", __FUNCTION__, AxisCmd[axis]);
     gettimeofday(&now, NULL);
     if (((now.tv_sec - lastreadmotorstatus[axis].tv_sec) + ((now.tv_usec - lastreadmotorstatus[axis].tv_usec) / 1e6)) >
         SKYWATCHER_MAXREFRESH)

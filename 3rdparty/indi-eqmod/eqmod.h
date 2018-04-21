@@ -23,11 +23,11 @@
 #include "align/align.h"
 #endif
 #include "simulator/simulator.h"
-#ifdef WITH_SCOPE_LIMITS
+#ifdef WITH_MOUNT_LIMITS
 #include "scope-limits/scope-limits.h"
 #endif
 
-#include <inditelescope.h>
+#include <indimount.h>
 #include <indiguiderinterface.h>
 
 #include <libnova/ln_types.h>
@@ -254,11 +254,11 @@ class EQMod : public INDI::Telescope, public INDI::GuiderInterface
 
     EQModSimulator *simulator;
 
-#ifdef WITH_SCOPE_LIMITS
+#ifdef WITH_MOUNT_LIMITS
     HorizonLimits *horizon;
 #endif
     // AutoHoming for EQ8
-    static const TelescopeStatus SCOPE_AUTOHOMING = static_cast<TelescopeStatus>(SCOPE_PARKED + 1);
+    static const TelescopeStatus MOUNT_AUTOHOMING = static_cast<TelescopeStatus>(MOUNT_PARKED + 1);
     enum AutoHomeStatus
     {
         AUTO_HOME_IDLE,

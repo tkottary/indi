@@ -17,7 +17,7 @@
 
 #pragma once
 
-#include <inditelescope.h>
+#include <indimount.h>
 
 #include <vector>
 

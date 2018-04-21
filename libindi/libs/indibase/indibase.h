@@ -27,7 +27,7 @@
    <li>DustCapInterface: Basic interface remotely controlled dust covers.</li>
    <li>LightBoxInterface: Basic interface for remotely controlled light boxes/switches.</li>
    <li>CCD: Base class for CCD drivers. Provides basic support for single chip CCD and CCDs with a guide head as well.</li>
-   <li>Telescope: Base class for telescope drivers.</li>
+   <li>Mount: Base class for telescope drivers.</li>
    <li>FilterWheel: Base class for Filter Wheels. It implements the FilterInterface.</li>
    <li>Focuser: Base class for focusers.</li>
    <li>Rotator: Base class for rotators.</li>
@@ -57,7 +57,7 @@ class DustCapInterface;
 class LightBoxInterface;
 class CCD;
 class Detector;
-class Telescope;
+class Mount;
 class FilterWheel;
 class Focuser;
 class Rotator;

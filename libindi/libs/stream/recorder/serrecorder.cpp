@@ -45,7 +45,7 @@ SER_Recorder::SER_Recorder()
     strncpy(serh.FileID, "LUCAM-RECORDER", 14);
     strncpy(serh.Observer, "                        Unknown Observer", 40);
     strncpy(serh.Instrume, "                      Unknown Instrument", 40);
-    strncpy(serh.Telescope, "                       Unknown Telescope", 40);
+    strncpy(serh.Mount, "                       Unknown Mount", 40);
     serh.LuID = 0;
     serh.PixelDepth = 8;
     number_of_planes=1;
@@ -111,7 +111,7 @@ void SER_Recorder::write_header(ser_header *s)
     write_int_le(&(s->FrameCount));
     fwrite((const void *)(s->Observer), sizeof(char), 40, f);
     fwrite((const void *)(s->Instrume), sizeof(char), 40, f);
-    fwrite((const void *)(s->Telescope), sizeof(char), 40, f);
+    fwrite((const void *)(s->Mount), sizeof(char), 40, f);
     write_long_int_le(&(s->DateTime));
     write_long_int_le(&(s->DateTime_UTC));
 }

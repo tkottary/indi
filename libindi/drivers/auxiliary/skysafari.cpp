@@ -131,7 +131,7 @@ bool SkySafari::initProperties()
     IUFillSwitchVector(&ServerControlSP, ServerControlS, 2, getDeviceName(), "Server", "", MAIN_CONTROL_TAB, IP_RW,
                        ISR_1OFMANY, 0, IPS_IDLE);
 
-    IUFillText(&ActiveDeviceT[ACTIVE_TELESCOPE], "ACTIVE_TELESCOPE", "Telescope", "Telescope Simulator");
+    IUFillText(&ActiveDeviceT[ACTIVE_TELESCOPE], "ACTIVE_TELESCOPE", "Mount", "Mount Simulator");
     IUFillTextVector(&ActiveDeviceTP, ActiveDeviceT, 1, getDeviceName(), "ACTIVE_DEVICES", "Active devices",
                      OPTIONS_TAB, IP_RW, 60, IPS_IDLE);
 
@@ -153,7 +153,7 @@ void SkySafari::ISGetProperties(const char *dev)
 
     loadConfig(true);
 
-    //watchdogClient->setTelescope(ActiveDeviceT[0].text);
+    //watchdogClient->setMount(ActiveDeviceT[0].text);
     //watchdogClient->setDome(ActiveDeviceT[1].text);
 }
 

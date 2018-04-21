@@ -63,7 +63,7 @@ void SkySafariClient::newDevice(INDI::BaseDevice *dp)
 *************************************************************************************/
 void SkySafariClient::newProperty(INDI::Property *property)
 {
-    if (!strcmp(property->getName(), "TELESCOPE_PARK"))
+    if (!strcmp(property->getName(), "MOUNT_PARK"))
         mountParkSP = property->getSwitch();
     else if (!strcmp(property->getName(), "EQUATORIAL_EOD_COORD"))
         eqCoordsNP = property->getNumber();
@@ -71,13 +71,13 @@ void SkySafariClient::newProperty(INDI::Property *property)
         geoCoordsNP = property->getNumber();
     else if (!strcmp(property->getName(), "ON_COORD_SET"))
         gotoModeSP = property->getSwitch();
-    else if (!strcmp(property->getName(), "TELESCOPE_ABORT_MOTION"))
+    else if (!strcmp(property->getName(), "MOUNT_ABORT_MOTION"))
         abortSP = property->getSwitch();
-    else if (!strcmp(property->getName(), "TELESCOPE_SLEW_RATE"))
+    else if (!strcmp(property->getName(), "MOUNT_SLEW_RATE"))
         slewRateSP = property->getSwitch();
-    else if (!strcmp(property->getName(), "TELESCOPE_MOTION_NS"))
+    else if (!strcmp(property->getName(), "MOUNT_MOTION_NS"))
         motionNSSP = property->getSwitch();
-    else if (!strcmp(property->getName(), "TELESCOPE_MOTION_WE"))
+    else if (!strcmp(property->getName(), "MOUNT_MOTION_WE"))
         motionWESP = property->getSwitch();
     else if (!strcmp(property->getName(), "TIME_UTC"))
         timeUTC = property->getText();

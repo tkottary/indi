@@ -33,12 +33,12 @@ class BasicMathPlugin : public AlignmentSubsystemForMathPlugins
     virtual bool Initialise(InMemoryDatabase *pInMemoryDatabase);
 
     /// \brief Override for the base class virtual function
-    virtual bool TransformCelestialToTelescope(const double RightAscension, const double Declination,
+    virtual bool TransformCelestialToMount(const double RightAscension, const double Declination,
                                                double JulianOffset,
-                                               TelescopeDirectionVector &ApparentTelescopeDirectionVector);
+                                               MountDirectionVector &ApparentMountDirectionVector);
 
     /// \brief Override for the base class virtual function
-    virtual bool TransformTelescopeToCelestial(const TelescopeDirectionVector &ApparentTelescopeDirectionVector,
+    virtual bool TransformMountToCelestial(const MountDirectionVector &ApparentMountDirectionVector,
                                                double &RightAscension, double &Declination);
 
   protected:
@@ -52,9 +52,9 @@ class BasicMathPlugin : public AlignmentSubsystemForMathPlugins
     /// \param[in] pAlphaToBeta Pointer to a matrix to receive the Alpha to Beta transformation matrix
     /// \param[in] pBetaToAlpha Pointer to a matrix to receive the Beta to Alpha transformation matrix
     virtual void
-    CalculateTransformMatrices(const TelescopeDirectionVector &Alpha1, const TelescopeDirectionVector &Alpha2,
-                               const TelescopeDirectionVector &Alpha3, const TelescopeDirectionVector &Beta1,
-                               const TelescopeDirectionVector &Beta2, const TelescopeDirectionVector &Beta3,
+    CalculateTransformMatrices(const MountDirectionVector &Alpha1, const MountDirectionVector &Alpha2,
+                               const MountDirectionVector &Alpha3, const MountDirectionVector &Beta1,
+                               const MountDirectionVector &Beta2, const MountDirectionVector &Beta3,
                                gsl_matrix *pAlphaToBeta, gsl_matrix *pBetaToAlpha) = 0;
 
     /// \brief Print out a 3 vector to debug
@@ -91,8 +91,8 @@ class BasicMathPlugin : public AlignmentSubsystemForMathPlugins
     /// \param[in] TriangleVertex3 The third vertex of the triangle
     /// \note The order of the vertices determine whether the triangle is facing away from or towards the origin.
     /// Intersection with triangles facing the origin will be ignored.
-    bool RayTriangleIntersection(TelescopeDirectionVector &Ray, TelescopeDirectionVector &TriangleVertex1,
-                                 TelescopeDirectionVector &TriangleVertex2, TelescopeDirectionVector &TriangleVertex3);
+    bool RayTriangleIntersection(MountDirectionVector &Ray, MountDirectionVector &TriangleVertex1,
+                                 MountDirectionVector &TriangleVertex2, MountDirectionVector &TriangleVertex3);
 
     // Transformation matrixes for 1, 2 and 2 sync points case
     gsl_matrix *pActualToApparentTransform;
@@ -102,7 +102,7 @@ class BasicMathPlugin : public AlignmentSubsystemForMathPlugins
     ConvexHull ActualConvexHull;
     ConvexHull ApparentConvexHull;
     // Actual direction cosines for the 4+ case
-    std::vector<TelescopeDirectionVector> ActualDirectionCosines;
+    std::vector<MountDirectionVector> ActualDirectionCosines;
 };
 
 } // namespace AlignmentSubsystem

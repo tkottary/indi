@@ -1,5 +1,5 @@
 /*
-* Header File for the Telescope Control protocols for the Meade LX200
+* Header File for the Mount Control protocols for the Meade LX200
 * Author:  John Kielkopf (kielkopf@louisville.edu)
 *
 * This file contains header information used in common with xmtel.

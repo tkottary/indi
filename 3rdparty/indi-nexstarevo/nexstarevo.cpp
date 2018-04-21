@@ -70,8 +70,8 @@ NexStarEvo::NexStarEvo()
       DBG_MOUNT(INDI::Logger::getInstance().addDebugLevel("NexStar Evo Verbose", "NSEVO"))
 {
     setVersion(NSEVO_VERSION_MAJOR, NSEVO_VERSION_MINOR);
-    SetTelescopeCapability(TELESCOPE_CAN_PARK | TELESCOPE_CAN_SYNC | TELESCOPE_CAN_GOTO | TELESCOPE_CAN_ABORT |
-                               TELESCOPE_HAS_TIME | TELESCOPE_HAS_LOCATION,
+    SetTelescopeCapability(MOUNT_CAN_PARK | MOUNT_CAN_SYNC | MOUNT_CAN_GOTO | MOUNT_CAN_ABORT |
+                               MOUNT_HAS_TIME | MOUNT_HAS_LOCATION,
                            4);
     // Approach from no further then degs away
     Approach = 1.0;
@@ -108,7 +108,7 @@ bool NexStarEvo::Abort()
         IDSetNumber(&EqNP, NULL);
     }
 
-    TrackState = SCOPE_IDLE;
+    TrackState = MOUNT_IDLE;
 
     AxisStatusAZ = AxisStatusALT = STOPPED;
     ScopeStatus                  = IDLE;
@@ -168,7 +168,7 @@ bool NexStarEvo::Park()
     // This is a designated by celestron parking position
     Abort();
     scope.Park();
-    TrackState = SCOPE_PARKING;
+    TrackState = MOUNT_PARKING;
     ParkSP.s   = IPS_BUSY;
     IDSetSwitch(&ParkSP, NULL);
     DEBUG(DBG_NSEVO, "Telescope park in progress...");
@@ -322,7 +322,7 @@ bool NexStarEvo::Goto(double ra, double dec)
 
     DEBUGF(DBG_NSEVO, "Goto: Scope reference frame target altitude %lf azimuth %lf", AltAz.alt, AltAz.az);
 
-    TrackState = SCOPE_SLEWING;
+    TrackState = MOUNT_SLEWING;
     if (ScopeStatus == APPROACH)
     {
         // We need to make a slow slew to approach the final position
@@ -355,9 +355,9 @@ bool NexStarEvo::initProperties()
     IUFillSwitch(&SlewRateS[SLEW_MAX], "SLEW_MAX", "Max", ISS_ON);
     // Switch to slew rate switch name as defined in telescope_simulator
     // IUFillSwitchVector(&SlewRateSP, SlewRateS, 4, getDeviceName(), "SLEWMODE", "Slew Rate", MOTION_TAB, IP_RW, ISR_1OFMANY, 0, IPS_IDLE);
-    IUFillSwitchVector(&SlewRateSP, SlewRateS, 4, getDeviceName(), "TELESCOPE_SLEW_RATE", "Slew Rate", MOTION_TAB,
+    IUFillSwitchVector(&SlewRateSP, SlewRateS, 4, getDeviceName(), "MOUNT_SLEW_RATE", "Slew Rate", MOTION_TAB,
                        IP_RW, ISR_1OFMANY, 0, IPS_IDLE);
-    TrackState = SCOPE_IDLE;
+    TrackState = MOUNT_IDLE;
 
     // We don't want serial port for now
     unRegisterConnection(serialConnection);
@@ -458,7 +458,7 @@ bool NexStarEvo::MoveNS(INDI_DIR_NS dir, TelescopeMotionCommand command)
     AxisDirectionALT = (dir == DIRECTION_NORTH) ? FORWARD : REVERSE;
     AxisStatusALT    = (command == MOTION_START) ? SLEWING : STOPPED;
     ScopeStatus      = SLEWING_MANUAL;
-    TrackState       = SCOPE_SLEWING;
+    TrackState       = MOUNT_SLEWING;
     if (command == MOTION_START)
     {
         switch (rate)
@@ -492,7 +492,7 @@ bool NexStarEvo::MoveWE(INDI_DIR_WE dir, TelescopeMotionCommand command)
     AxisDirectionAZ = (dir == DIRECTION_WEST) ? FORWARD : REVERSE;
     AxisStatusAZ    = (command == MOTION_START) ? SLEWING : STOPPED;
     ScopeStatus     = SLEWING_MANUAL;
-    TrackState      = SCOPE_SLEWING;
+    TrackState      = MOUNT_SLEWING;
     if (command == MOTION_START)
     {
         switch (rate)
@@ -682,7 +682,7 @@ void NexStarEvo::TimerHit()
     // Now handle the tracking state
     switch (TrackState)
     {
-        case SCOPE_PARKING:
+        case MOUNT_PARKING:
             if (!scope.slewing())
             {
                 SetParked(true);
@@ -690,7 +690,7 @@ void NexStarEvo::TimerHit()
             }
             break;
 
-        case SCOPE_SLEWING:
+        case MOUNT_SLEWING:
             if (scope.slewing())
             {
                 // The scope is still slewing
@@ -726,7 +726,7 @@ void NexStarEvo::TimerHit()
                     }
                     DEBUGF(DBG_NSEVO, "Goto finished start tracking TargetRA: %f TargetDEC: %f",
                            CurrentTrackingTarget.ra, CurrentTrackingTarget.dec);
-                    TrackState = SCOPE_TRACKING;
+                    TrackState = MOUNT_TRACKING;
                     // Fall through to tracking case
                 }
                 else
@@ -734,13 +734,13 @@ void NexStarEvo::TimerHit()
                     DEBUG(DBG_NSEVO, "Goto finished. No tracking requested");
                     // Precise goto or manual slew finished.
                     // No tracking requested -> go idle.
-                    TrackState = SCOPE_IDLE;
+                    TrackState = MOUNT_IDLE;
                     break;
                 }
             }
             break;
 
-        case SCOPE_TRACKING:
+        case MOUNT_TRACKING:
         {
             // Continue or start tracking
             // Calculate where the mount needs to be in a minute

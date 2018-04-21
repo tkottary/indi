@@ -2,7 +2,7 @@
    INDI Developers Manual
    Tutorial #2
 
-   "Simple Telescope Driver"
+   "Simple Mount Driver"
 
    We develop a simple telescope simulator.
 
@@ -21,9 +21,9 @@
 
 #pragma once
 
-#include "inditelescope.h"
+#include "indimount.h"
 
-class SimpleScope : public INDI::Telescope
+class SimpleScope : public INDI::Mount
 {
   public:
     SimpleScope();
@@ -33,7 +33,7 @@ class SimpleScope : public INDI::Telescope
     const char *getDefaultName();
     bool initProperties();
 
-    // Telescope specific functions
+    // Mount specific functions
     bool ReadScopeStatus();
     bool Goto(double, double);
     bool Abort();

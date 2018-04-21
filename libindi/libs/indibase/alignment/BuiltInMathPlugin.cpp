@@ -12,12 +12,12 @@ namespace AlignmentSubsystem
 {
 // Private methods
 
-void BuiltInMathPlugin::CalculateTransformMatrices(const TelescopeDirectionVector &Alpha1,
-                                                   const TelescopeDirectionVector &Alpha2,
-                                                   const TelescopeDirectionVector &Alpha3,
-                                                   const TelescopeDirectionVector &Beta1,
-                                                   const TelescopeDirectionVector &Beta2,
-                                                   const TelescopeDirectionVector &Beta3, gsl_matrix *pAlphaToBeta,
+void BuiltInMathPlugin::CalculateTransformMatrices(const MountDirectionVector &Alpha1,
+                                                   const MountDirectionVector &Alpha2,
+                                                   const MountDirectionVector &Alpha3,
+                                                   const MountDirectionVector &Beta1,
+                                                   const MountDirectionVector &Beta2,
+                                                   const MountDirectionVector &Beta3, gsl_matrix *pAlphaToBeta,
                                                    gsl_matrix *pBetaToAlpha)
 {
     // Derive the Actual to Apparent transformation matrix
@@ -78,7 +78,7 @@ void BuiltInMathPlugin::CalculateTransformMatrices(const TelescopeDirectionVecto
                 ASSDEBUG("CalculateTransformMatrices - AlphaToBeta matrix is singular!");
                 IDMessage(
                     nullptr,
-                    "Calculated Celestial to Telescope transformation matrix is singular (not a true transform).");
+                    "Calculated Celestial to Mount transformation matrix is singular (not a true transform).");
             }
 
             Dump3x3("BetaToAlpha", pBetaToAlpha);

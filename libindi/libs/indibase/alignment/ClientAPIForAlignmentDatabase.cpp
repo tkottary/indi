@@ -449,9 +449,9 @@ bool ClientAPIForAlignmentDatabase::ReadIncrementSyncPoint(AlignmentDatabaseEntr
     CurrentValues.ObservationJulianDate = pMandatoryNumbers->np[ENTRY_OBSERVATION_JULIAN_DATE].value;
     CurrentValues.RightAscension        = pMandatoryNumbers->np[ENTRY_RA].value;
     CurrentValues.Declination           = pMandatoryNumbers->np[ENTRY_DEC].value;
-    CurrentValues.TelescopeDirection.x  = pMandatoryNumbers->np[ENTRY_VECTOR_X].value;
-    CurrentValues.TelescopeDirection.y  = pMandatoryNumbers->np[ENTRY_VECTOR_Y].value;
-    CurrentValues.TelescopeDirection.z  = pMandatoryNumbers->np[ENTRY_VECTOR_Z].value;
+    CurrentValues.MountDirection.x  = pMandatoryNumbers->np[ENTRY_VECTOR_X].value;
+    CurrentValues.MountDirection.y  = pMandatoryNumbers->np[ENTRY_VECTOR_Y].value;
+    CurrentValues.MountDirection.z  = pMandatoryNumbers->np[ENTRY_VECTOR_Z].value;
 
     return true;
 }
@@ -511,9 +511,9 @@ bool ClientAPIForAlignmentDatabase::ReadSyncPoint(unsigned int Offset, Alignment
     CurrentValues.ObservationJulianDate = pMandatoryNumbers->np[ENTRY_OBSERVATION_JULIAN_DATE].value;
     CurrentValues.RightAscension        = pMandatoryNumbers->np[ENTRY_RA].value;
     CurrentValues.Declination           = pMandatoryNumbers->np[ENTRY_DEC].value;
-    CurrentValues.TelescopeDirection.x  = pMandatoryNumbers->np[ENTRY_VECTOR_X].value;
-    CurrentValues.TelescopeDirection.y  = pMandatoryNumbers->np[ENTRY_VECTOR_Y].value;
-    CurrentValues.TelescopeDirection.z  = pMandatoryNumbers->np[ENTRY_VECTOR_Z].value;
+    CurrentValues.MountDirection.x  = pMandatoryNumbers->np[ENTRY_VECTOR_X].value;
+    CurrentValues.MountDirection.y  = pMandatoryNumbers->np[ENTRY_VECTOR_Y].value;
+    CurrentValues.MountDirection.z  = pMandatoryNumbers->np[ENTRY_VECTOR_Z].value;
 
     return true;
 }
@@ -567,9 +567,9 @@ bool ClientAPIForAlignmentDatabase::SendEntryData(const AlignmentDatabaseEntry &
     pMandatoryNumbers->np[ENTRY_OBSERVATION_JULIAN_DATE].value = CurrentValues.ObservationJulianDate;
     pMandatoryNumbers->np[ENTRY_RA].value                      = CurrentValues.RightAscension;
     pMandatoryNumbers->np[ENTRY_DEC].value                     = CurrentValues.Declination;
-    pMandatoryNumbers->np[ENTRY_VECTOR_X].value                = CurrentValues.TelescopeDirection.x;
-    pMandatoryNumbers->np[ENTRY_VECTOR_Y].value                = CurrentValues.TelescopeDirection.y;
-    pMandatoryNumbers->np[ENTRY_VECTOR_Z].value                = CurrentValues.TelescopeDirection.z;
+    pMandatoryNumbers->np[ENTRY_VECTOR_X].value                = CurrentValues.MountDirection.x;
+    pMandatoryNumbers->np[ENTRY_VECTOR_Y].value                = CurrentValues.MountDirection.y;
+    pMandatoryNumbers->np[ENTRY_VECTOR_Z].value                = CurrentValues.MountDirection.z;
     SetDriverBusy();
     BaseClient->sendNewNumber(pMandatoryNumbers);
     WaitForDriverCompletion();

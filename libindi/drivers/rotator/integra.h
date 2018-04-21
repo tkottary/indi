@@ -1,5 +1,5 @@
 /*
-    Gemini Telescope Design Integra85 Focusing Rotator.
+    Gemini Mount Design Integra85 Focusing Rotator.
     Copyright (C) 2017 Hans Lambermont
 
     This library is free software; you can redistribute it and/or

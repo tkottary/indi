@@ -20,7 +20,7 @@
 #include "config.h"
 #include "skywatcher-simulator.h"
 
-#include <inditelescope.h>
+#include <indimount.h>
 
 class EQModSimulator
 {

@@ -19,7 +19,7 @@
 
 #include "eqmoderror.h"
 
-#include <inditelescope.h>
+#include <indimount.h>
 
 #include <lilxml.h>
 

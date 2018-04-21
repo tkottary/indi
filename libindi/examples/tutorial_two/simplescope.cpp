@@ -2,7 +2,7 @@
    INDI Developers Manual
    Tutorial #2
 
-   "Simple Telescope Driver"
+   "Simple Mount Driver"
 
    We develop a simple telescope simulator.
 
@@ -88,7 +88,7 @@ SimpleScope::SimpleScope()
     // We add an additional debug level so we can log verbose scope status
     DBG_SCOPE = INDI::Logger::getInstance().addDebugLevel("Scope Verbose", "SCOPE");
 
-    SetTelescopeCapability(TELESCOPE_CAN_ABORT);
+    SetMountCapability(MOUNT_CAN_ABORT);
 }
 
 /**************************************************************************************
@@ -97,7 +97,7 @@ SimpleScope::SimpleScope()
 bool SimpleScope::initProperties()
 {
     // ALWAYS call initProperties() of parent first
-    INDI::Telescope::initProperties();
+    INDI::Mount::initProperties();
 
     addDebugControl();
 
@@ -136,7 +136,7 @@ bool SimpleScope::Goto(double ra, double dec)
     fs_sexa(DecStr, targetDEC, 2, 3600);
 
     // Mark state as slewing
-    TrackState = SCOPE_SLEWING;
+    TrackState = MOUNT_SLEWING;
 
     // Inform client we are slewing to a new position
     LOGF_INFO("Slewing to RA: %s - DEC: %s", RAStr, DecStr);
@@ -179,7 +179,7 @@ bool SimpleScope::ReadScopeStatus()
     /* Process per current state. We check the state of EQUATORIAL_EOD_COORDS_REQUEST and act acoordingly */
     switch (TrackState)
     {
-        case SCOPE_SLEWING:
+        case MOUNT_SLEWING:
             // Wait until we are "locked" into positon for both RA & DEC axis
             nlocked = 0;
 
@@ -219,9 +219,9 @@ bool SimpleScope::ReadScopeStatus()
             if (nlocked == 2)
             {
                 // Let's set state to TRACKING
-                TrackState = SCOPE_TRACKING;
+                TrackState = MOUNT_TRACKING;
 
-                LOG_INFO("Telescope slew is complete. Tracking...");
+                LOG_INFO("Mount slew is complete. Tracking...");
             }
             break;
 

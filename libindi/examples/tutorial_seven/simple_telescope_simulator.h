@@ -2,10 +2,10 @@
 #pragma once
 
 #include "indiguiderinterface.h"
-#include "inditelescope.h"
+#include "indimount.h"
 #include "alignment/AlignmentSubsystemForDrivers.h"
 
-class ScopeSim : public INDI::Telescope, public INDI::AlignmentSubsystem::AlignmentSubsystemForDrivers
+class ScopeSim : public INDI::Mount, public INDI::AlignmentSubsystem::AlignmentSubsystemForDrivers
 {
   public:
     ScopeSim();
@@ -28,8 +28,8 @@ private:
     virtual bool ISNewSwitch(const char *dev, const char *name, ISState *states, char *names[], int n) override;
     friend void ISNewText(const char *dev, const char *name, char *texts[], char *names[], int n);
     virtual bool ISNewText(const char *dev, const char *name, char *texts[], char *names[], int n) override;
-    virtual bool MoveNS(INDI_DIR_NS dir, TelescopeMotionCommand command) override;
-    virtual bool MoveWE(INDI_DIR_WE dir, TelescopeMotionCommand command) override;
+    virtual bool MoveNS(INDI_DIR_NS dir, MountMotionCommand command) override;
+    virtual bool MoveWE(INDI_DIR_WE dir, MountMotionCommand command) override;
     virtual bool ReadScopeStatus() override;
     virtual bool Sync(double ra, double dec) override;
     virtual void TimerHit() override;

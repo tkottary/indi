@@ -264,7 +264,7 @@ IPState DomeSim::Park()
     if (INDI::Dome::isLocked())
     {
         DEBUG(INDI::Logger::DBG_SESSION,
-              "Cannot Park Dome when mount is locking. See: Telescope parking policy, in options tab");
+              "Cannot Park Dome when mount is locking. See: Mount parking policy, in options tab");
         return IPS_ALERT;
     }
 

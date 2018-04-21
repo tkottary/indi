@@ -319,8 +319,11 @@ int main(int ac, char *av[])
     nclinfo = 0;
 
     /* create driver info array all at once since size never changes */
-    ndvrinfo = ac;
+    ndvrinfo = ac+1;
     dvrinfo  = (DvrInfo *)calloc(ndvrinfo, sizeof(DvrInfo));
+
+    strncpy(dvrinfo[ac].name, "indi_settings", MAXINDINAME);
+    startDvr(&dvrinfo[ac]);
 
     /* start each driver */
     while (ac-- > 0)

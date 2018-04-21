@@ -104,7 +104,7 @@ class IEQ45Basic
     double lastDEC;
     bool simulation;
     bool fault;
-    int fd; /* Telescope tty file descriptor */
+    int fd; /* Mount tty file descriptor */
 
     int currentSet;
     int lastSet;

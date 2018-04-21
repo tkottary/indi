@@ -24,7 +24,7 @@
 #include <vector>
 
 // to get access to lat/long data
-#include <inditelescope.h>
+#include <indimount.h>
 
 typedef struct AlignData
 {

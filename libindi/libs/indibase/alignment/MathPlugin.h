@@ -58,18 +58,18 @@ class MathPlugin
     /// \param[in] RightAscension Right Ascension (Decimal Hours).
     /// \param[in] Declination Declination (Decimal Degrees).
     /// \param[in] JulianOffset to be applied to the current julian date.
-    /// \param[out] ApparentTelescopeDirectionVector Parameter to receive the corrected telescope direction
+    /// \param[out] ApparentMountDirectionVector Parameter to receive the corrected telescope direction
     /// \return True if successful
-    virtual bool TransformCelestialToTelescope(const double RightAscension, const double Declination,
+    virtual bool TransformCelestialToMount(const double RightAscension, const double Declination,
                                                double JulianOffset,
-                                               TelescopeDirectionVector &ApparentTelescopeDirectionVector) = 0;
+                                               MountDirectionVector &ApparentMountDirectionVector) = 0;
 
     /// \brief Get the true celestial coordinates for the supplied telescope pointing direction
-    /// \param[in] ApparentTelescopeDirectionVector the telescope direction
+    /// \param[in] ApparentMountDirectionVector the telescope direction
     /// \param[out] RightAscension Parameter to receive the Right Ascension (Decimal Hours).
     /// \param[out] Declination Parameter to receive the Declination (Decimal Degrees).
     /// \return True if successful
-    virtual bool TransformTelescopeToCelestial(const TelescopeDirectionVector &ApparentTelescopeDirectionVector,
+    virtual bool TransformMountToCelestial(const MountDirectionVector &ApparentMountDirectionVector,
                                                double &RightAscension, double &Declination) = 0;
 
   protected:

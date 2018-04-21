@@ -474,7 +474,7 @@ void Align::AlignSync(SyncData globalsync, SyncData thissync)
     double values[6]     = { thissync.lst,       thissync.jd,          thissync.targetRA,
                          thissync.targetDEC, thissync.telescopeRA, thissync.telescopeDEC };
     const char *names[6] = { "ALIGNPOINT_SYNCTIME",     "ALIGNPOINT_JD",           "ALIGNPOINT_CELESTIAL_RA",
-                             "ALIGNPOINT_CELESTIAL_DE", "ALIGNPOINT_TELESCOPE_RA", "ALIGNPOINT_TELESCOPE_DE" };
+                             "ALIGNPOINT_CELESTIAL_DE", "ALIGNPOINT_MOUNT_RA", "ALIGNPOINT_MOUNT_DE" };
 
     /*syncdata.lst = lst; syncdata.jd = jd;
   syncdata.targetRA = targetRA;  syncdata.targetDEC = targetDEC;  
@@ -554,7 +554,7 @@ void Align::GetAlignedCoords(SyncData globalsync, double jd, struct ln_lnlat_pos
 {
     //double values[2] = {currentRA + globalsync.deltaRA, currentDEC + globalsync.deltaDEC };
     double values[2]     = { currentRA, currentDEC };
-    const char *names[2] = { "ALIGNTELESCOPE_RA", "ALIGNTELESCOPE_DE" };
+    const char *names[2] = { "ALIGNMOUNT_RA", "ALIGNMOUNT_DE" };
     IUUpdateNumber(AlignTelescopeCoordsNP, values, (char **)names, 2);
     IDSetNumber(AlignTelescopeCoordsNP, NULL);
     switch (GetAlignmentMode())

@@ -24,37 +24,37 @@ AlignmentSubsystemForDrivers::AlignmentSubsystemForDrivers()
 
 // Public methods
 
-void AlignmentSubsystemForDrivers::InitAlignmentProperties(Telescope *pTelescope)
+void AlignmentSubsystemForDrivers::InitAlignmentProperties(Mount *pMount)
 {
-    MapPropertiesToInMemoryDatabase::InitProperties(pTelescope);
-    MathPluginManagement::InitProperties(pTelescope);
+    MapPropertiesToInMemoryDatabase::InitProperties(pMount);
+    MathPluginManagement::InitProperties(pMount);
 }
 
-void AlignmentSubsystemForDrivers::ProcessAlignmentBLOBProperties(Telescope *pTelescope, const char *name, int sizes[],
+void AlignmentSubsystemForDrivers::ProcessAlignmentBLOBProperties(Mount *pMount, const char *name, int sizes[],
                                                                   int blobsizes[], char *blobs[], char *formats[],
                                                                   char *names[], int n)
 {
-    MapPropertiesToInMemoryDatabase::ProcessBlobProperties(pTelescope, name, sizes, blobsizes, blobs, formats, names,
+    MapPropertiesToInMemoryDatabase::ProcessBlobProperties(pMount, name, sizes, blobsizes, blobs, formats, names,
                                                            n);
 }
 
-void AlignmentSubsystemForDrivers::ProcessAlignmentNumberProperties(Telescope *pTelescope, const char *name,
+void AlignmentSubsystemForDrivers::ProcessAlignmentNumberProperties(Mount *pMount, const char *name,
                                                                     double values[], char *names[], int n)
 {
-    MapPropertiesToInMemoryDatabase::ProcessNumberProperties(pTelescope, name, values, names, n);
+    MapPropertiesToInMemoryDatabase::ProcessNumberProperties(pMount, name, values, names, n);
 }
 
-void AlignmentSubsystemForDrivers::ProcessAlignmentSwitchProperties(Telescope *pTelescope, const char *name,
+void AlignmentSubsystemForDrivers::ProcessAlignmentSwitchProperties(Mount *pMount, const char *name,
                                                                     ISState *states, char *names[], int n)
 {
-    MapPropertiesToInMemoryDatabase::ProcessSwitchProperties(pTelescope, name, states, names, n);
-    MathPluginManagement::ProcessSwitchProperties(pTelescope, name, states, names, n);
+    MapPropertiesToInMemoryDatabase::ProcessSwitchProperties(pMount, name, states, names, n);
+    MathPluginManagement::ProcessSwitchProperties(pMount, name, states, names, n);
 }
 
-void AlignmentSubsystemForDrivers::ProcessAlignmentTextProperties(Telescope *pTelescope, const char *name,
+void AlignmentSubsystemForDrivers::ProcessAlignmentTextProperties(Mount *pMount, const char *name,
                                                                   char *texts[], char *names[], int n)
 {
-    MathPluginManagement::ProcessTextProperties(pTelescope, name, texts, names, n);
+    MathPluginManagement::ProcessTextProperties(pMount, name, texts, names, n);
 }
 
 void AlignmentSubsystemForDrivers::SaveAlignmentConfigProperties(FILE *fp)

@@ -37,7 +37,7 @@ namespace INDI
  *       the type of input requested and the initial default value.
  *       For example:
  *       \code{.cpp}
- *       mapController("ABORT", "Abort Telescope", INDI::Controller::CONTROLLER_BUTTON, "BUTTON_1");
+ *       mapController("ABORT", "Abort Mount", INDI::Controller::CONTROLLER_BUTTON, "BUTTON_1");
  *       \endcode
  *       After mapping all the desired controls, call the class initProperties() function.
  *       If the user enables joystick support in the driver and presses a button on the joystick, the button

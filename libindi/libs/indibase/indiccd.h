@@ -833,12 +833,12 @@ class CCD : public DefaultDevice, GuiderInterface
         UPLOAD_PREFIX
     };
 
-    ISwitch TelescopeTypeS[2];
-    ISwitchVectorProperty TelescopeTypeSP;
+    ISwitch MountTypeS[2];
+    ISwitchVectorProperty MountTypeSP;
     enum
     {
-        TELESCOPE_PRIMARY,
-        TELESCOPE_GUIDE
+        MOUNT_PRIMARY,
+        MOUNT_GUIDE
     };
 
     // WCS

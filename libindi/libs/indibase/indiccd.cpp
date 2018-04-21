@@ -614,9 +614,9 @@ bool CCD::initProperties()
     IUFillNumberVector(&CCDRotationNP, CCDRotationN, 1, getDeviceName(), "CCD_ROTATION", "CCD FOV", WCS_TAB, IP_RW, 60,
                        IPS_IDLE);
 
-    IUFillSwitch(&TelescopeTypeS[TELESCOPE_PRIMARY], "TELESCOPE_PRIMARY", "Primary", ISS_ON);
-    IUFillSwitch(&TelescopeTypeS[TELESCOPE_GUIDE], "TELESCOPE_GUIDE", "Guide", ISS_OFF);
-    IUFillSwitchVector(&TelescopeTypeSP, TelescopeTypeS, 2, getDeviceName(), "TELESCOPE_TYPE", "Telescope", OPTIONS_TAB,
+    IUFillSwitch(&MountTypeS[MOUNT_PRIMARY], "MOUNT_PRIMARY", "Primary", ISS_ON);
+    IUFillSwitch(&MountTypeS[MOUNT_GUIDE], "MOUNT_GUIDE", "Guide", ISS_OFF);
+    IUFillSwitchVector(&MountTypeSP, MountTypeS, 2, getDeviceName(), "MOUNT_TYPE", "Mount", OPTIONS_TAB,
                        IP_RW, ISR_1OFMANY, 0, IPS_IDLE);
 
     /**********************************************/
@@ -669,7 +669,7 @@ bool CCD::initProperties()
     /**********************************************/
 
     // Snooped Devices
-    IUFillText(&ActiveDeviceT[0], "ACTIVE_TELESCOPE", "Telescope", "Telescope Simulator");
+    IUFillText(&ActiveDeviceT[0], "ACTIVE_TELESCOPE", "Mount", "Mount Simulator");
     IUFillText(&ActiveDeviceT[1], "ACTIVE_FOCUSER", "Focuser", "Focuser Simulator");
     IUFillText(&ActiveDeviceT[2], "ACTIVE_FILTER", "Filter", "CCD Simulator");
     IUFillText(&ActiveDeviceT[3], "ACTIVE_SKYQUALITY", "Sky Quality", "SQM");
@@ -686,7 +686,7 @@ bool CCD::initProperties()
 
     // Snoop mount
     IDSnoopDevice(ActiveDeviceT[SNOOP_MOUNT].text, "EQUATORIAL_EOD_COORD");
-    IDSnoopDevice(ActiveDeviceT[SNOOP_MOUNT].text, "TELESCOPE_INFO");
+    IDSnoopDevice(ActiveDeviceT[SNOOP_MOUNT].text, "MOUNT_INFO");
     IDSnoopDevice(ActiveDeviceT[SNOOP_MOUNT].text, "GEOGRAPHIC_COORD");
 
     // Snoop Rotator
@@ -796,7 +796,7 @@ bool CCD::updateProperties()
             defineSwitch(&GuideCCD.RapidGuideSetupSP);
             defineNumber(&GuideCCD.RapidGuideDataNP);
         }
-        defineSwitch(&TelescopeTypeSP);
+        defineSwitch(&MountTypeSP);
 
         defineSwitch(&WorldCoordSP);
         defineSwitch(&UploadSP);
@@ -864,7 +864,7 @@ bool CCD::updateProperties()
             deleteProperty(PrimaryCCD.ResetSP.name);
         if (HasBayer())
             deleteProperty(BayerTP.name);
-        deleteProperty(TelescopeTypeSP.name);
+        deleteProperty(MountTypeSP.name);
 
         if (WorldCoordS[0].s == ISS_ON)
         {
@@ -904,17 +904,17 @@ bool CCD::ISSnoopDevice(XMLEle *root)
             Dec = newdec;
         }
     }
-    else if (!strcmp(propName, "TELESCOPE_INFO"))
+    else if (!strcmp(propName, "MOUNT_INFO"))
     {
         for (ep = nextXMLEle(root, 1); ep != nullptr; ep = nextXMLEle(root, 0))
         {
             const char *name = findXMLAttValu(ep, "name");
 
-            if (!strcmp(name, "TELESCOPE_APERTURE"))
+            if (!strcmp(name, "MOUNT_APERTURE"))
             {
                 primaryAperture = atof(pcdataXMLEle(ep));
             }
-            else if (!strcmp(name, "TELESCOPE_FOCAL_LENGTH"))
+            else if (!strcmp(name, "MOUNT_FOCAL_LENGTH"))
             {
                 primaryFocalLength = atof(pcdataXMLEle(ep));
             }
@@ -1007,7 +1007,7 @@ bool CCD::ISNewText(const char *dev, const char *name, char *texts[], char *name
             if (strlen(ActiveDeviceT[SNOOP_MOUNT].text) > 0)
             {
                 IDSnoopDevice(ActiveDeviceT[SNOOP_MOUNT].text, "EQUATORIAL_EOD_COORD");
-                IDSnoopDevice(ActiveDeviceT[SNOOP_MOUNT].text, "TELESCOPE_INFO");
+                IDSnoopDevice(ActiveDeviceT[SNOOP_MOUNT].text, "MOUNT_INFO");
                 IDSnoopDevice(ActiveDeviceT[SNOOP_MOUNT].text, "GEOGRAPHIC_COORD");
             }
             else
@@ -1447,11 +1447,11 @@ bool CCD::ISNewSwitch(const char *dev, const char *name, ISState *states, char *
             return true;
         }
 
-        if (!strcmp(name, TelescopeTypeSP.name))
+        if (!strcmp(name, MountTypeSP.name))
         {
-            IUUpdateSwitch(&TelescopeTypeSP, states, names, n);
-            TelescopeTypeSP.s = IPS_OK;
-            IDSetSwitch(&TelescopeTypeSP, nullptr);
+            IUUpdateSwitch(&MountTypeSP, states, names, n);
+            MountTypeSP.s = IPS_OK;
+            IDSetSwitch(&MountTypeSP, nullptr);
             return true;
         }
 
@@ -1832,11 +1832,11 @@ void CCD::addFITSKeywords(fitsfile *fptr, CCDChip *targetChip)
     strncpy(fitsString, getDeviceName(), MAXINDIDEVICE);
     fits_update_key_s(fptr, TSTRING, "INSTRUME", fitsString, "CCD Name", &status);
 
-    // Telescope
+    // Mount
     if (strlen(ActiveDeviceT[0].text) > 0)
     {
         strncpy(fitsString, ActiveDeviceT[0].text, MAXINDIDEVICE);
-        fits_update_key_s(fptr, TSTRING, "TELESCOP", fitsString, "Telescope name", &status);
+        fits_update_key_s(fptr, TSTRING, "TELESCOP", fitsString, "Mount name", &status);
     }
 
 
@@ -1913,9 +1913,9 @@ void CCD::addFITSKeywords(fitsfile *fptr, CCDChip *targetChip)
         fits_update_key_s(fptr, TSTRING, "BAYERPAT", BayerT[2].text, "Bayer color pattern", &status);
     }
 
-    if (TelescopeTypeS[TELESCOPE_PRIMARY].s == ISS_ON && primaryFocalLength != -1)
+    if (MountTypeS[MOUNT_PRIMARY].s == ISS_ON && primaryFocalLength != -1)
         fits_update_key_s(fptr, TDOUBLE, "FOCALLEN", &primaryFocalLength, "Focal Length (mm)", &status);
-    else if (TelescopeTypeS[TELESCOPE_GUIDE].s == ISS_ON && guiderFocalLength != -1)
+    else if (MountTypeS[MOUNT_GUIDE].s == ISS_ON && guiderFocalLength != -1)
         fits_update_key_s(fptr, TDOUBLE, "FOCALLEN", &guiderFocalLength, "Focal Length (mm)", &status);
 
     if (!std::isnan(MPSAS))
@@ -2859,7 +2859,7 @@ bool CCD::saveConfigItems(FILE *fp)
     IUSaveConfigText(fp, &ActiveDeviceTP);
     IUSaveConfigSwitch(fp, &UploadSP);
     IUSaveConfigText(fp, &UploadSettingsTP);
-    IUSaveConfigSwitch(fp, &TelescopeTypeSP);
+    IUSaveConfigSwitch(fp, &MountTypeSP);
 #ifdef WITH_EXPOSURE_LOOPING
     IUSaveConfigSwitch(fp, &ExposureLoopSP);
 #endif

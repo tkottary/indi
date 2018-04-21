@@ -227,7 +227,7 @@ class Dome : public DefaultDevice
 
     /**
          * @brief isLocked, is the dome currently locked?
-         * @return True if lock status equals true, and TelescopeClosedLockTP is Telescope Locks.
+         * @return True if lock status equals true, and MountClosedLockTP is Mount Locks.
          */
     bool isLocked();
 
@@ -486,8 +486,8 @@ class Dome : public DefaultDevice
     IText ActiveDeviceT[2] {};
 
     // Switch to lock id mount is unparked
-    ISwitchVectorProperty TelescopeClosedLockTP;
-    ISwitch TelescopeClosedLockT[2];
+    ISwitchVectorProperty MountClosedLockTP;
+    ISwitch MountClosedLockT[2];
 
     INumber PresetN[3];
     INumberVectorProperty PresetNP;

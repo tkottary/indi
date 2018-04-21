@@ -292,7 +292,7 @@ bool CCDSim::StartExposure(float duration)
 {
     if (std::isnan(RA) && std::isnan(Dec))
     {
-        LOG_ERROR("Telescope coordinates missing. Make sure telescope is connected and its name is set in CCD Options.");
+        LOG_ERROR("Mount coordinates missing. Make sure telescope is connected and its name is set in CCD Options.");
         return false;
     }
 
@@ -494,7 +494,7 @@ int CCDSim::DrawCcdFrame(INDI::CCDChip *targetChip)
     else
         ExposureTime = ExposureRequest;
 
-    if (TelescopeTypeS[TELESCOPE_PRIMARY].s == ISS_ON)
+    if (MountTypeS[MOUNT_PRIMARY].s == ISS_ON)
         targetFocalLength = primaryFocalLength;
     else
         targetFocalLength = guiderFocalLength;

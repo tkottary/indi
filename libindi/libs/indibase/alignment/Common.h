@@ -58,29 +58,29 @@ enum AlignmentPointSetEnum
 };
 
 /*!
- * \struct TelescopeDirectionVector
+ * \struct MountDirectionVector
  * \brief Holds a nomalised direction vector (direction cosines)
  *
  * The x y,z fields of this class should normally represent a normalised (unit length)
  * vector in a right handed rectangular coordinate space. However, for convenience a number
  * a number of standard 3d vector methods are also supported.
  */
-struct TelescopeDirectionVector
+struct MountDirectionVector
 {
     /// \brief Default constructor
-    TelescopeDirectionVector() : x(0), y(0), z(0) {}
+    MountDirectionVector() : x(0), y(0), z(0) {}
 
     /// \brief Copy constructor
-    TelescopeDirectionVector(double X, double Y, double Z) : x(X), y(Y), z(Z) {}
+    MountDirectionVector(double X, double Y, double Z) : x(X), y(Y), z(Z) {}
 
     double x;
     double y;
     double z;
 
     /// \brief Override the * operator to return a cross product
-    inline const TelescopeDirectionVector operator*(const TelescopeDirectionVector &RHS) const
+    inline const MountDirectionVector operator*(const MountDirectionVector &RHS) const
     {
-        TelescopeDirectionVector Result;
+        MountDirectionVector Result;
 
         Result.x = y * RHS.z - z * RHS.y;
         Result.y = z * RHS.x - x * RHS.z;
@@ -89,9 +89,9 @@ struct TelescopeDirectionVector
     }
 
     /// \brief Override the * operator to return a scalar product
-    inline const TelescopeDirectionVector operator*(const double &RHS) const
+    inline const MountDirectionVector operator*(const double &RHS) const
     {
-        TelescopeDirectionVector Result;
+        MountDirectionVector Result;
 
         Result.x = x * RHS;
         Result.y = y * RHS;
@@ -100,7 +100,7 @@ struct TelescopeDirectionVector
     }
 
     /// \brief Override the *= operator to return a  unary scalar product
-    inline const TelescopeDirectionVector &operator*=(const double &RHS)
+    inline const MountDirectionVector &operator*=(const double &RHS)
     {
         x *= RHS;
         y *= RHS;
@@ -109,13 +109,13 @@ struct TelescopeDirectionVector
     }
 
     /// \brief Override the - operator to return a binary vector subtract
-    inline const TelescopeDirectionVector operator-(const TelescopeDirectionVector &RHS) const
+    inline const MountDirectionVector operator-(const MountDirectionVector &RHS) const
     {
-        return TelescopeDirectionVector(x - RHS.x, y - RHS.y, z - RHS.z);
+        return MountDirectionVector(x - RHS.x, y - RHS.y, z - RHS.z);
     }
 
     /// \brief Override the ^ operator to return a dot product
-    inline double operator^(const TelescopeDirectionVector &RHS) const { return x * RHS.x + y * RHS.y + z * RHS.z; }
+    inline double operator^(const MountDirectionVector &RHS) const { return x * RHS.x + y * RHS.y + z * RHS.z; }
 
     /// \brief Return the length of the vector
     /// \return Length of the vector
@@ -150,7 +150,7 @@ struct AlignmentDatabaseEntry
     /// \brief Copy constructor
     AlignmentDatabaseEntry(const AlignmentDatabaseEntry &Source)
         : ObservationJulianDate(Source.ObservationJulianDate), RightAscension(Source.RightAscension),
-          Declination(Source.Declination), TelescopeDirection(Source.TelescopeDirection),
+          Declination(Source.Declination), MountDirection(Source.MountDirection),
           PrivateDataSize(Source.PrivateDataSize)
     {
         if (0 != PrivateDataSize)
@@ -166,7 +166,7 @@ struct AlignmentDatabaseEntry
         ObservationJulianDate = RHS.ObservationJulianDate;
         RightAscension        = RHS.RightAscension;
         Declination           = RHS.Declination;
-        TelescopeDirection    = RHS.TelescopeDirection;
+        MountDirection    = RHS.MountDirection;
         PrivateDataSize       = RHS.PrivateDataSize;
         if (0 != PrivateDataSize)
         {
@@ -188,7 +188,7 @@ struct AlignmentDatabaseEntry
 
     /// \brief Normalised vector giving telescope pointing direction.
     /// This is referred to elsewhere as the "apparent" direction.
-    TelescopeDirectionVector TelescopeDirection;
+    MountDirectionVector MountDirection;
 
     /// \brief Private data associated with this sync point
     std::unique_ptr<unsigned char> PrivateData;

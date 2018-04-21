@@ -20,14 +20,14 @@ MathPluginManagement::MathPluginManagement() : CurrentInMemoryDatabase(nullptr),
     pGetApproximateMountAlignment(&MathPlugin::GetApproximateMountAlignment),
     pInitialise(&MathPlugin::Initialise),
     pSetApproximateMountAlignment(&MathPlugin::SetApproximateMountAlignment),
-    pTransformCelestialToTelescope(&MathPlugin::TransformCelestialToTelescope),
-    pTransformTelescopeToCelestial(&MathPlugin::TransformTelescopeToCelestial),
+    pTransformCelestialToMount(&MathPlugin::TransformCelestialToMount),
+    pTransformMountToCelestial(&MathPlugin::TransformMountToCelestial),
     pLoadedMathPlugin(&BuiltInPlugin), LoadedMathPluginHandle(nullptr)
 {
     memset(&AlignmentSubsystemCurrentMathPlugin, 0, sizeof(IText));
 }
 
-void MathPluginManagement::InitProperties(Telescope *ChildTelescope)
+void MathPluginManagement::InitProperties(Mount *ChildMount)
 {
     EnumeratePlugins();
     AlignmentSubsystemMathPlugins.reset(new ISwitch[MathPluginDisplayNames.size() + 1]);
@@ -39,35 +39,35 @@ void MathPluginManagement::InitProperties(Telescope *ChildTelescope)
                      MathPluginDisplayNames[i].c_str(), ISS_OFF);
     }
     IUFillSwitchVector(&AlignmentSubsystemMathPluginsV, AlignmentSubsystemMathPlugins.get(),
-                       MathPluginDisplayNames.size() + 1, ChildTelescope->getDeviceName(),
+                       MathPluginDisplayNames.size() + 1, ChildMount->getDeviceName(),
                        "ALIGNMENT_SUBSYSTEM_MATH_PLUGINS", "Math Plugins", ALIGNMENT_TAB, IP_RW, ISR_1OFMANY, 60,
                        IPS_IDLE);
-    ChildTelescope->registerProperty(&AlignmentSubsystemMathPluginsV, INDI_SWITCH);
+    ChildMount->registerProperty(&AlignmentSubsystemMathPluginsV, INDI_SWITCH);
 
     IUFillSwitch(&AlignmentSubsystemMathPluginInitialise, "ALIGNMENT_SUBSYSTEM_MATH_PLUGIN_INITIALISE", "OK", ISS_OFF);
     IUFillSwitchVector(&AlignmentSubsystemMathPluginInitialiseV, &AlignmentSubsystemMathPluginInitialise, 1,
-                       ChildTelescope->getDeviceName(), "ALIGNMENT_SUBSYSTEM_MATH_PLUGIN_INITIALISE",
+                       ChildMount->getDeviceName(), "ALIGNMENT_SUBSYSTEM_MATH_PLUGIN_INITIALISE",
                        "(Re)Initialise Plugin", ALIGNMENT_TAB, IP_RW, ISR_ATMOST1, 60, IPS_IDLE);
-    ChildTelescope->registerProperty(&AlignmentSubsystemMathPluginInitialiseV, INDI_SWITCH);
+    ChildMount->registerProperty(&AlignmentSubsystemMathPluginInitialiseV, INDI_SWITCH);
 
     IUFillSwitch(&AlignmentSubsystemActive, "ALIGNMENT SUBSYSTEM ACTIVE", "Alignment Subsystem Active", ISS_OFF);
-    IUFillSwitchVector(&AlignmentSubsystemActiveV, &AlignmentSubsystemActive, 1, ChildTelescope->getDeviceName(),
+    IUFillSwitchVector(&AlignmentSubsystemActiveV, &AlignmentSubsystemActive, 1, ChildMount->getDeviceName(),
                        "ALIGNMENT_SUBSYSTEM_ACTIVE", "Activate alignment subsystem", ALIGNMENT_TAB, IP_RW, ISR_ATMOST1,
                        60, IPS_IDLE);
-    ChildTelescope->registerProperty(&AlignmentSubsystemActiveV, INDI_SWITCH);
+    ChildMount->registerProperty(&AlignmentSubsystemActiveV, INDI_SWITCH);
 
     // The following property is used for configuration purposes only and is not exposed to the client.
     IUFillText(&AlignmentSubsystemCurrentMathPlugin, "ALIGNMENT_SUBSYSTEM_CURRENT_MATH_PLUGIN", "Current Math Plugin",
                AlignmentSubsystemMathPlugins.get()[0].label);
     IUFillTextVector(&AlignmentSubsystemCurrentMathPluginV, &AlignmentSubsystemCurrentMathPlugin, 1,
-                     ChildTelescope->getDeviceName(), "ALIGNMENT_SUBSYSTEM_CURRENT_MATH_PLUGIN", "Current Math Plugin",
+                     ChildMount->getDeviceName(), "ALIGNMENT_SUBSYSTEM_CURRENT_MATH_PLUGIN", "Current Math Plugin",
                      ALIGNMENT_TAB, IP_RO, 60, IPS_IDLE);
 }
 
-void MathPluginManagement::ProcessTextProperties(Telescope *pTelescope, const char *name, char *texts[], char *names[],
+void MathPluginManagement::ProcessTextProperties(Mount *pMount, const char *name, char *texts[], char *names[],
                                                  int n)
 {
-    DEBUGFDEVICE(pTelescope->getDeviceName(), INDI::Logger::DBG_DEBUG, "ProcessTextProperties - name(%s)", name);
+    DEBUGFDEVICE(pMount->getDeviceName(), INDI::Logger::DBG_DEBUG, "ProcessTextProperties - name(%s)", name);
     if (strcmp(name, AlignmentSubsystemCurrentMathPluginV.name) == 0)
     {
         AlignmentSubsystemCurrentMathPluginV.s = IPS_OK;
@@ -177,11 +177,11 @@ void MathPluginManagement::ProcessTextProperties(Telescope *pTelescope, const ch
     }
 }
 
-void MathPluginManagement::ProcessSwitchProperties(Telescope *pTelescope, const char *name, ISState *states,
+void MathPluginManagement::ProcessSwitchProperties(Mount *pMount, const char *name, ISState *states,
                                                    char *names[], int n)
 {
-    //DEBUGFDEVICE(pTelescope->getDeviceName(), INDI::Logger::DBG_DEBUG, "ProcessSwitchProperties - name(%s)", name);
-    INDI_UNUSED(pTelescope);
+    //DEBUGFDEVICE(pMount->getDeviceName(), INDI::Logger::DBG_DEBUG, "ProcessSwitchProperties - name(%s)", name);
+    INDI_UNUSED(pMount);
     if (strcmp(name, AlignmentSubsystemMathPluginsV.name) == 0)
     {
         int CurrentPlugin = IUFindOnSwitchIndex(&AlignmentSubsystemMathPluginsV);
@@ -319,22 +319,22 @@ void MathPluginManagement::SetApproximateMountAlignment(MountAlignment_t Approxi
     (pLoadedMathPlugin->*pSetApproximateMountAlignment)(ApproximateAlignment);
 }
 
-bool MathPluginManagement::TransformCelestialToTelescope(const double RightAscension, const double Declination,
+bool MathPluginManagement::TransformCelestialToMount(const double RightAscension, const double Declination,
                                                          double JulianOffset,
-                                                         TelescopeDirectionVector &ApparentTelescopeDirectionVector)
+                                                         MountDirectionVector &ApparentMountDirectionVector)
 {
     if (AlignmentSubsystemActive.s == ISS_ON)
-        return (pLoadedMathPlugin->*pTransformCelestialToTelescope)(RightAscension, Declination, JulianOffset,
-                                                                    ApparentTelescopeDirectionVector);
+        return (pLoadedMathPlugin->*pTransformCelestialToMount)(RightAscension, Declination, JulianOffset,
+                                                                    ApparentMountDirectionVector);
     else
         return false;
 }
 
-bool MathPluginManagement::TransformTelescopeToCelestial(
-    const TelescopeDirectionVector &ApparentTelescopeDirectionVector, double &RightAscension, double &Declination)
+bool MathPluginManagement::TransformMountToCelestial(
+    const MountDirectionVector &ApparentMountDirectionVector, double &RightAscension, double &Declination)
 {
     if (AlignmentSubsystemActive.s == ISS_ON)
-        return (pLoadedMathPlugin->*pTransformTelescopeToCelestial)(ApparentTelescopeDirectionVector, RightAscension,
+        return (pLoadedMathPlugin->*pTransformMountToCelestial)(ApparentMountDirectionVector, RightAscension,
                                                                     Declination);
     else
         return false;

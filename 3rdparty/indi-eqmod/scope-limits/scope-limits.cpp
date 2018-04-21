@@ -567,17 +567,17 @@ bool HorizonLimits::checkLimits(double az, double alt, INDI::Telescope::Telescop
     if (!(inLimits(az, alt)))
     {
         abortmsg = "Nothing to abort.";
-        if ((status == INDI::Telescope::SCOPE_TRACKING) && (swaborttrack->s == ISS_ON))
+        if ((status == INDI::Telescope::MOUNT_TRACKING) && (swaborttrack->s == ISS_ON))
         {
             abortmsg   = "Abort Tracking.";
             abortscope = true;
         }
-        if ((status == INDI::Telescope::SCOPE_SLEWING) && (swabortslew->s == ISS_ON) && !ingoto)
+        if ((status == INDI::Telescope::MOUNT_SLEWING) && (swabortslew->s == ISS_ON) && !ingoto)
         {
             abortmsg   = "Abort Slewing.";
             abortscope = true;
         }
-        if ((status == INDI::Telescope::SCOPE_SLEWING) && (swabortgoto->s == ISS_ON) && ingoto)
+        if ((status == INDI::Telescope::MOUNT_SLEWING) && (swabortgoto->s == ISS_ON) && ingoto)
         {
             abortmsg   = "Abort Goto.";
             abortscope = true;

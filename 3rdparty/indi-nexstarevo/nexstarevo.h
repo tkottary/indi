@@ -3,7 +3,7 @@
 
 #include "NexStarAUXScope.h"
 
-#include <inditelescope.h>
+#include <indimount.h>
 #include <alignment/AlignmentSubsystemForDrivers.h>
 
 class NexStarEvo : public INDI::Telescope, public INDI::AlignmentSubsystem::AlignmentSubsystemForDrivers

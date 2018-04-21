@@ -10,7 +10,7 @@
 
 #include "BuiltInMathPlugin.h"
 
-#include "inditelescope.h"
+#include "indimount.h"
 
 #include <memory>
 
@@ -46,30 +46,30 @@ class MathPluginManagement : private MathPlugin // Derive from MathPluign to for
     virtual ~MathPluginManagement() {}
 
     /** \brief Initialize alignment math plugin properties. It is recommended to call this function within initProperties() of your primary device
-         * \param[in] pTelescope Pointer to the child INDI::Telecope class
+         * \param[in] pMount Pointer to the child INDI::Telecope class
         */
-    void InitProperties(Telescope *pTelescope);
+    void InitProperties(Mount *pMount);
 
     /** \brief Call this function from within the ISNewSwitch processing path. The function will
          * handle any math plugin switch properties.
-         * \param[in] pTelescope Pointer to the child INDI::Telecope class
+         * \param[in] pMount Pointer to the child INDI::Telecope class
          * \param[in] name vector property name
          * \param[in] states states as passed by the client
          * \param[in] names names as passed by the client
          * \param[in] n number of values and names pair to process.
         */
-    void ProcessSwitchProperties(Telescope *pTelescope, const char *name, ISState *states, char *names[], int n);
+    void ProcessSwitchProperties(Mount *pMount, const char *name, ISState *states, char *names[], int n);
 
     /** \brief Call this function from within the ISNewText processing path. The function will
          * handle any math plugin text properties. This text property is at the moment only contained in the
          * config file so this will normally only have work to do when the config file is loaded.
-         * \param[in] pTelescope Pointer to the child INDI::Telecope class
+         * \param[in] pMount Pointer to the child INDI::Telecope class
          * \param[in] name vector property name
          * \param[in] texts texts as passed by the client
          * \param[in] names names as passed by the client
          * \param[in] n number of values and names pair to process.
         */
-    void ProcessTextProperties(Telescope *pTelescope, const char *name, char *texts[], char *names[], int n);
+    void ProcessTextProperties(Mount *pMount, const char *name, char *texts[], char *names[], int n);
 
     /** \brief Call this function to save persistent math plugin properties.
          * This function should be called from within the saveConfigItems function of your driver.
@@ -106,9 +106,9 @@ class MathPluginManagement : private MathPlugin // Derive from MathPluign to for
     MountAlignment_t GetApproximateMountAlignment();
     bool Initialise(InMemoryDatabase *pInMemoryDatabase);
     void SetApproximateMountAlignment(MountAlignment_t ApproximateAlignment);
-    bool TransformCelestialToTelescope(const double RightAscension, const double Declination, double JulianOffset,
-                                       TelescopeDirectionVector &ApparentTelescopeDirectionVector);
-    bool TransformTelescopeToCelestial(const TelescopeDirectionVector &ApparentTelescopeDirectionVector,
+    bool TransformCelestialToMount(const double RightAscension, const double Declination, double JulianOffset,
+                                       MountDirectionVector &ApparentMountDirectionVector);
+    bool TransformMountToCelestial(const MountDirectionVector &ApparentMountDirectionVector,
                                        double &RightAscension, double &Declination);
 
   private:
@@ -134,10 +134,10 @@ class MathPluginManagement : private MathPlugin // Derive from MathPluign to for
     MountAlignment_t (MathPlugin::*pGetApproximateMountAlignment)();
     bool (MathPlugin::*pInitialise)(InMemoryDatabase *pInMemoryDatabase);
     void (MathPlugin::*pSetApproximateMountAlignment)(MountAlignment_t ApproximateAlignment);
-    bool (MathPlugin::*pTransformCelestialToTelescope)(const double RightAscension, const double Declination,
+    bool (MathPlugin::*pTransformCelestialToMount)(const double RightAscension, const double Declination,
                                                        double JulianOffset,
-                                                       TelescopeDirectionVector &TelescopeDirectionVector);
-    bool (MathPlugin::*pTransformTelescopeToCelestial)(const TelescopeDirectionVector &TelescopeDirectionVector,
+                                                       MountDirectionVector &MountDirectionVector);
+    bool (MathPlugin::*pTransformMountToCelestial)(const MountDirectionVector &MountDirectionVector,
                                                        double &RightAscension, double &Declination);
     MathPlugin *pLoadedMathPlugin;
     void *LoadedMathPluginHandle;

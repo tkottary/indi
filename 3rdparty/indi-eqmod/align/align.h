@@ -19,7 +19,7 @@
 
 #include "pointset.h"
 
-#include <inditelescope.h>
+#include <indimount.h>
 
 typedef struct SyncData SyncData;
 

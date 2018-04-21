@@ -187,7 +187,7 @@ void Disconnect();*/
  Diagnostics
  **************************************************************************/
 char ACK(int fd);
-/*int testTelescope();
+/*int testMount();
 int testAP();*/
 int check_IEQ45_connection(int fd);
 

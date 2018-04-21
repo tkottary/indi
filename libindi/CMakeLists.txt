@@ -348,7 +348,7 @@ SET(indidriver_CXX_SRC
     ${CMAKE_CURRENT_SOURCE_DIR}/libs/indibase/indiproperty.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/libs/indibase/indiccd.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/libs/indibase/indidetector.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/libs/indibase/inditelescope.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/libs/indibase/indimount.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/libs/indibase/indifilterwheel.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/libs/indibase/indifocuserinterface.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/libs/indibase/indifocuser.cpp
@@ -443,13 +443,13 @@ install(TARGETS indi_imager_agent RUNTIME DESTINATION bin)
 #################################################################################
 
 #####################################
-########## TELESCOPE GROUP ##########
+########## mount GROUP ##########
 #####################################
 
 ########### LX200 Basic #############
 SET(lx200basic_SRC
-    ${CMAKE_CURRENT_SOURCE_DIR}/drivers/telescope/lx200driver.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/drivers/telescope/lx200basic.cpp)
+    ${CMAKE_CURRENT_SOURCE_DIR}/drivers/mount/lx200driver.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/drivers/mount/lx200basic.cpp)
 
 IF (UNITY_BUILD)
     ENABLE_UNITY_BUILD(lx200basic lx200basic_SRC 10 cpp)
@@ -465,27 +465,27 @@ install(TARGETS indi_lx200basic RUNTIME DESTINATION bin)
 
 ########### LX200 Generic ###########
 SET(lx200generic_SRCS
-    ${CMAKE_CURRENT_SOURCE_DIR}/drivers/telescope/lx200driver.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/drivers/telescope/lx200autostar.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/drivers/telescope/lx200_16.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/drivers/telescope/lx200gps.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/drivers/telescope/lx200generic.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/drivers/telescope/lx200telescope.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/drivers/telescope/lx200classic.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/drivers/telescope/lx200apdriver.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/drivers/telescope/lx200gemini.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/drivers/telescope/lx200zeq25.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/drivers/telescope/lx200gotonova.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/drivers/telescope/lx200pulsar2.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/drivers/telescope/lx200ap_experimentaldriver.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/drivers/telescope/lx200ap_experimental.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/drivers/telescope/lx200ap.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/drivers/telescope/lx200ap_gtocp2.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/drivers/telescope/lx200fs2.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/drivers/telescope/lx200ss2000pc.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/drivers/telescope/lx200_OnStep.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/drivers/telescope/lx200_10micron.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/drivers/telescope/ioptronHC8406.cpp)
+    ${CMAKE_CURRENT_SOURCE_DIR}/drivers/mount/lx200driver.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/drivers/mount/lx200autostar.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/drivers/mount/lx200_16.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/drivers/mount/lx200gps.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/drivers/mount/lx200generic.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/drivers/mount/lx200mount.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/drivers/mount/lx200classic.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/drivers/mount/lx200apdriver.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/drivers/mount/lx200gemini.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/drivers/mount/lx200zeq25.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/drivers/mount/lx200gotonova.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/drivers/mount/lx200pulsar2.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/drivers/mount/lx200ap_experimentaldriver.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/drivers/mount/lx200ap_experimental.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/drivers/mount/lx200ap.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/drivers/mount/lx200ap_gtocp2.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/drivers/mount/lx200fs2.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/drivers/mount/lx200ss2000pc.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/drivers/mount/lx200_OnStep.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/drivers/mount/lx200_10micron.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/drivers/mount/ioptronHC8406.cpp)
 
 IF (UNITY_BUILD)
     ENABLE_UNITY_BUILD(lx200generic lx200generic_SRCS 10 cpp)
@@ -520,8 +520,8 @@ set_target_properties(indi_lx200generic PROPERTIES POST_INSTALL_SCRIPT ${CMAKE_C
 
 ########### Celestron GPS ############
 SET(celestrongps_SRC
-    ${CMAKE_CURRENT_SOURCE_DIR}/drivers/telescope/celestrondriver.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/drivers/telescope/celestrongps.cpp)
+    ${CMAKE_CURRENT_SOURCE_DIR}/drivers/mount/celestrondriver.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/drivers/mount/celestrongps.cpp)
 
 add_executable(indi_celestron_gps ${celestrongps_SRC})
 
@@ -534,110 +534,110 @@ install(TARGETS indi_celestron_gps RUNTIME DESTINATION bin)
 
 ########### Takahashi Temma ##########
 SET(temma_SRC
-    ${CMAKE_CURRENT_SOURCE_DIR}/drivers/telescope/temmadriver.cpp )
+    ${CMAKE_CURRENT_SOURCE_DIR}/drivers/mount/temmadriver.cpp )
 
-add_executable(indi_temma_telescope ${temma_SRC})
+add_executable(indi_temma_mount ${temma_SRC})
 
-target_link_libraries(indi_temma_telescope indidriver AlignmentDriver)
+target_link_libraries(indi_temma_mount indidriver AlignmentDriver)
 
-install(TARGETS indi_temma_telescope RUNTIME DESTINATION bin)
+install(TARGETS indi_temma_mount RUNTIME DESTINATION bin)
 #################################################################################
 
 ########### Paramount ##########
 SET(paramount_SRC
-    ${CMAKE_CURRENT_SOURCE_DIR}/drivers/telescope/paramount.cpp)
+    ${CMAKE_CURRENT_SOURCE_DIR}/drivers/mount/paramount.cpp)
 
-add_executable(indi_paramount_telescope ${paramount_SRC})
+add_executable(indi_paramount_mount ${paramount_SRC})
 
-target_link_libraries(indi_paramount_telescope indidriver)
+target_link_libraries(indi_paramount_mount indidriver)
 
-install(TARGETS indi_paramount_telescope RUNTIME DESTINATION bin)
+install(TARGETS indi_paramount_mount RUNTIME DESTINATION bin)
 
 #################################################################################
 
 ########### Syncscan ###############
 SET(synscan_SRC
-    ${CMAKE_CURRENT_SOURCE_DIR}/drivers/telescope/synscanmount.cpp)
+    ${CMAKE_CURRENT_SOURCE_DIR}/drivers/mount/synscanmount.cpp)
 
-add_executable(indi_synscan_telescope ${synscan_SRC})
-target_link_libraries(indi_synscan_telescope indidriver AlignmentDriver)
+add_executable(indi_synscan_mount ${synscan_SRC})
+target_link_libraries(indi_synscan_mount indidriver AlignmentDriver)
 
-install(TARGETS indi_synscan_telescope RUNTIME DESTINATION bin)
+install(TARGETS indi_synscan_mount RUNTIME DESTINATION bin)
 
 ########### Sky Commander ###############
 SET(skycommander_SRC
-    ${CMAKE_CURRENT_SOURCE_DIR}/drivers/telescope/skycommander.cpp)
+    ${CMAKE_CURRENT_SOURCE_DIR}/drivers/mount/skycommander.cpp)
 
-add_executable(indi_skycommander_telescope ${skycommander_SRC})
-target_link_libraries(indi_skycommander_telescope indidriver)
+add_executable(indi_skycommander_mount ${skycommander_SRC})
+target_link_libraries(indi_skycommander_mount indidriver)
 
-install(TARGETS indi_skycommander_telescope RUNTIME DESTINATION bin)
+install(TARGETS indi_skycommander_mount RUNTIME DESTINATION bin)
 
 ########### Generic Digital Setting Circle ###############
 SET(dsc_SRC
-    ${CMAKE_CURRENT_SOURCE_DIR}/drivers/telescope/dsc.cpp)
+    ${CMAKE_CURRENT_SOURCE_DIR}/drivers/mount/dsc.cpp)
 
-add_executable(indi_dsc_telescope ${dsc_SRC})
-target_link_libraries(indi_dsc_telescope indidriver AlignmentDriver)
+add_executable(indi_dsc_mount ${dsc_SRC})
+target_link_libraries(indi_dsc_mount indidriver AlignmentDriver)
 
-install(TARGETS indi_dsc_telescope RUNTIME DESTINATION bin)
+install(TARGETS indi_dsc_mount RUNTIME DESTINATION bin)
 
 ########### IEQ Pro / CEM60 #############
 SET(ieq_SRC
-    ${CMAKE_CURRENT_SOURCE_DIR}/drivers/telescope/ieqprodriver.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/drivers/telescope/ieqpro.cpp)
+    ${CMAKE_CURRENT_SOURCE_DIR}/drivers/mount/ieqprodriver.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/drivers/mount/ieqpro.cpp)
 
 IF (UNITY_BUILD)
     ENABLE_UNITY_BUILD(ieq ieq_SRC 10 cpp)
 ENDIF ()
 
-add_executable(indi_ieq_telescope ${ieq_SRC})
+add_executable(indi_ieq_mount ${ieq_SRC})
 
-target_link_libraries(indi_ieq_telescope indidriver)
+target_link_libraries(indi_ieq_mount indidriver)
 
-install(TARGETS indi_ieq_telescope RUNTIME DESTINATION bin)
+install(TARGETS indi_ieq_mount RUNTIME DESTINATION bin)
 
 ########### IOptronV3 / CEM120 #############
 SET(ioptronv3_SRC
-    ${CMAKE_CURRENT_SOURCE_DIR}/drivers/telescope/ioptronv3driver.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/drivers/telescope/ioptronv3.cpp)
+    ${CMAKE_CURRENT_SOURCE_DIR}/drivers/mount/ioptronv3driver.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/drivers/mount/ioptronv3.cpp)
 
 IF (UNITY_BUILD)
     ENABLE_UNITY_BUILD(ioptronv3 ioptronv3_SRC 10 cpp)
 ENDIF ()
 
-add_executable(indi_ioptronv3_telescope ${ioptronv3_SRC})
+add_executable(indi_ioptronv3_mount ${ioptronv3_SRC})
 
-target_link_libraries(indi_ioptronv3_telescope indidriver)
+target_link_libraries(indi_ioptronv3_mount indidriver)
 
-install(TARGETS indi_ioptronv3_telescope RUNTIME DESTINATION bin)
+install(TARGETS indi_ioptronv3_mount RUNTIME DESTINATION bin)
 
 ########### Explore Scientific PMC8 #############
 SET(pmc8_SRC
-    ${CMAKE_CURRENT_SOURCE_DIR}/drivers/telescope/pmc8driver.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/drivers/telescope/pmc8.cpp)
+    ${CMAKE_CURRENT_SOURCE_DIR}/drivers/mount/pmc8driver.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/drivers/mount/pmc8.cpp)
 
-add_executable(indi_pmc8_telescope ${pmc8_SRC})
+add_executable(indi_pmc8_mount ${pmc8_SRC})
 
-target_link_libraries(indi_pmc8_telescope indidriver)
+target_link_libraries(indi_pmc8_mount indidriver)
 
-install(TARGETS indi_pmc8_telescope RUNTIME DESTINATION bin)
+install(TARGETS indi_pmc8_mount RUNTIME DESTINATION bin)
 
-########### Telescope Simulator ##############
-SET(telescopesimulator_SRC
-    ${CMAKE_CURRENT_SOURCE_DIR}/drivers/telescope/telescope_simulator.cpp)
+########### mount Simulator ##############
+SET(mountsimulator_SRC
+    ${CMAKE_CURRENT_SOURCE_DIR}/drivers/mount/mount_simulator.cpp)
 
-add_executable(indi_simulator_telescope ${telescopesimulator_SRC})
-target_link_libraries(indi_simulator_telescope indidriver)
-install(TARGETS indi_simulator_telescope RUNTIME DESTINATION bin)
+add_executable(indi_simulator_mount ${mountsimulator_SRC})
+target_link_libraries(indi_simulator_mount indidriver)
+install(TARGETS indi_simulator_mount RUNTIME DESTINATION bin)
 
-########### Telescope Scripting Gateway ##############
-SET(telescopescript_SRC
-    ${CMAKE_CURRENT_SOURCE_DIR}/drivers/telescope/telescope_script.cpp)
+########### mount Scripting Gateway ##############
+SET(mountscript_SRC
+    ${CMAKE_CURRENT_SOURCE_DIR}/drivers/mount/mount_script.cpp)
 
-add_executable(indi_script_telescope ${telescopescript_SRC})
-target_link_libraries(indi_script_telescope indidriver)
-install(TARGETS indi_script_telescope RUNTIME DESTINATION bin)
+add_executable(indi_script_mount ${mountscript_SRC})
+target_link_libraries(indi_script_mount indidriver)
+install(TARGETS indi_script_mount RUNTIME DESTINATION bin)
 
 ########### CCD Simulator ##############
 SET(ccdsimulator_SRC
@@ -988,6 +988,19 @@ ENDIF ()
 #####################################
 ############ AUX GROUP ##############
 #####################################
+
+########### INDI Settings ##############
+SET(settings_SRC
+    ${CMAKE_CURRENT_SOURCE_DIR}/drivers/auxiliary/indisettings.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/drivers/auxiliary/indisettings.cpp)
+
+IF (UNITY_BUILD)
+ENABLE_UNITY_BUILD(settings settings_SRC 10 cpp)
+ENDIF ()
+
+add_executable(indi_settings ${settings_SRC})
+target_link_libraries(indi_settings indidriver)
+install(TARGETS indi_settings RUNTIME DESTINATION bin)
 
 ########### SkySafari Middleware ##############
 IF (INDI_BUILD_CLIENT)
@@ -1371,7 +1384,7 @@ if (INDI_BUILD_DRIVERS OR INDI_BUILD_CLIENT OR INDI_BUILD_QT5_CLIENT)
         ${CMAKE_CURRENT_SOURCE_DIR}/libs/indibase/indifocuserinterface.h
         ${CMAKE_CURRENT_SOURCE_DIR}/libs/indibase/indifocuser.h
         ${CMAKE_CURRENT_SOURCE_DIR}/libs/indibase/indirotator.h
-        ${CMAKE_CURRENT_SOURCE_DIR}/libs/indibase/inditelescope.h
+        ${CMAKE_CURRENT_SOURCE_DIR}/libs/indibase/indimount.h
         ${CMAKE_CURRENT_SOURCE_DIR}/libs/indibase/indiguiderinterface.h
         ${CMAKE_CURRENT_SOURCE_DIR}/libs/indibase/indifilterinterface.h
         ${CMAKE_CURRENT_SOURCE_DIR}/libs/indibase/indirotatorinterface.h

@@ -32,9 +32,9 @@ bool InMemoryDatabase::CheckForDuplicateSyncPoint(const AlignmentDatabaseEntry &
     {
         if (((std::abs((*iTr).RightAscension - CandidateEntry.RightAscension) < 24.0 * Tolerance / 100.0) &&
              (std::abs((*iTr).Declination - CandidateEntry.Declination) < 180.0 * Tolerance / 100.0)) ||
-            ((std::abs((*iTr).TelescopeDirection.x - CandidateEntry.TelescopeDirection.x) < Tolerance / 100.0) &&
-             (std::abs((*iTr).TelescopeDirection.y - CandidateEntry.TelescopeDirection.y) < Tolerance / 100.0) &&
-             (std::abs((*iTr).TelescopeDirection.z - CandidateEntry.TelescopeDirection.z) < Tolerance / 100.0)))
+            ((std::abs((*iTr).MountDirection.x - CandidateEntry.MountDirection.x) < Tolerance / 100.0) &&
+             (std::abs((*iTr).MountDirection.y - CandidateEntry.MountDirection.y) < Tolerance / 100.0) &&
+             (std::abs((*iTr).MountDirection.z - CandidateEntry.MountDirection.z) < Tolerance / 100.0)))
             return true;
     }
     return false;
@@ -131,17 +131,17 @@ bool InMemoryDatabase::LoadDatabase(const char *DeviceName)
             {
                 f_scansexa(pcdataXMLEle(Element), &CurrentValues.Declination);
             }
-            else if (strcmp(tagXMLEle(Element), "TelescopeDirectionVectorX") == 0)
+            else if (strcmp(tagXMLEle(Element), "MountDirectionVectorX") == 0)
             {
-                sscanf(pcdataXMLEle(Element), "%lf", &CurrentValues.TelescopeDirection.x);
+                sscanf(pcdataXMLEle(Element), "%lf", &CurrentValues.MountDirection.x);
             }
-            else if (strcmp(tagXMLEle(Element), "TelescopeDirectionVectorY") == 0)
+            else if (strcmp(tagXMLEle(Element), "MountDirectionVectorY") == 0)
             {
-                sscanf(pcdataXMLEle(Element), "%lf", &CurrentValues.TelescopeDirection.y);
+                sscanf(pcdataXMLEle(Element), "%lf", &CurrentValues.MountDirection.y);
             }
-            else if (strcmp(tagXMLEle(Element), "TelescopeDirectionVectorZ") == 0)
+            else if (strcmp(tagXMLEle(Element), "MountDirectionVectorZ") == 0)
             {
-                sscanf(pcdataXMLEle(Element), "%lf", &CurrentValues.TelescopeDirection.z);
+                sscanf(pcdataXMLEle(Element), "%lf", &CurrentValues.MountDirection.z);
             }
             else
                 return false;
@@ -204,12 +204,12 @@ bool InMemoryDatabase::SaveDatabase(const char *DeviceName)
         fprintf(fp, "         <RightAscension>%s</RightAscension>\n", SexaString);
         fs_sexa(SexaString, (*Itr).Declination, 2, 3600);
         fprintf(fp, "         <Declination>%s</Declination>\n", SexaString);
-        fprintf(fp, "         <TelescopeDirectionVectorX>%lf</TelescopeDirectionVectorX>\n",
-                (*Itr).TelescopeDirection.x);
-        fprintf(fp, "         <TelescopeDirectionVectorY>%lf</TelescopeDirectionVectorY>\n",
-                (*Itr).TelescopeDirection.y);
-        fprintf(fp, "         <TelescopeDirectionVectorZ>%lf</TelescopeDirectionVectorZ>\n",
-                (*Itr).TelescopeDirection.z);
+        fprintf(fp, "         <MountDirectionVectorX>%lf</MountDirectionVectorX>\n",
+                (*Itr).MountDirection.x);
+        fprintf(fp, "         <MountDirectionVectorY>%lf</MountDirectionVectorY>\n",
+                (*Itr).MountDirection.y);
+        fprintf(fp, "         <MountDirectionVectorZ>%lf</MountDirectionVectorZ>\n",
+                (*Itr).MountDirection.z);
 
         fprintf(fp, "      </DatabaseEntry>\n");
     }

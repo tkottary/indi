@@ -2,7 +2,7 @@
 #pragma once
 
 #include "MathPlugin.h"
-#include "TelescopeDirectionVectorSupportFunctions.h"
+#include "MountDirectionVectorSupportFunctions.h"
 
 namespace INDI
 {
@@ -13,7 +13,7 @@ namespace AlignmentSubsystem
  * \brief This class encapsulates all the alignment subsystem classes that are useful to math plugin implementations.
  * Math plugins should inherit from this class.
  */
-class AlignmentSubsystemForMathPlugins : public MathPlugin, public TelescopeDirectionVectorSupportFunctions
+class AlignmentSubsystemForMathPlugins : public MathPlugin, public MountDirectionVectorSupportFunctions
 {
   public:
     /// \brief Virtual destructor

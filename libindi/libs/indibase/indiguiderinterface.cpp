@@ -37,12 +37,12 @@ void GuiderInterface::initGuiderProperties(const char *deviceName, const char *g
 {
     IUFillNumber(&GuideNSN[DIRECTION_NORTH], "TIMED_GUIDE_N", "North (ms)", "%.f", 0, 60000, 100, 0);
     IUFillNumber(&GuideNSN[DIRECTION_SOUTH], "TIMED_GUIDE_S", "South (ms)", "%.f", 0, 60000, 100, 0);
-    IUFillNumberVector(&GuideNSNP, GuideNSN, 2, deviceName, "TELESCOPE_TIMED_GUIDE_NS", "Guide N/S", groupName, IP_RW,
+    IUFillNumberVector(&GuideNSNP, GuideNSN, 2, deviceName, "MOUNT_TIMED_GUIDE_NS", "Guide N/S", groupName, IP_RW,
                        60, IPS_IDLE);
 
     IUFillNumber(&GuideWEN[DIRECTION_WEST], "TIMED_GUIDE_W", "West (ms)", "%.f", 0, 60000, 100, 0);
     IUFillNumber(&GuideWEN[DIRECTION_EAST], "TIMED_GUIDE_E", "East (ms)", "%.f", 0, 60000, 100, 0);
-    IUFillNumberVector(&GuideWENP, GuideWEN, 2, deviceName, "TELESCOPE_TIMED_GUIDE_WE", "Guide E/W", groupName, IP_RW,
+    IUFillNumberVector(&GuideWENP, GuideWEN, 2, deviceName, "MOUNT_TIMED_GUIDE_WE", "Guide E/W", groupName, IP_RW,
                        60, IPS_IDLE);
 }
 

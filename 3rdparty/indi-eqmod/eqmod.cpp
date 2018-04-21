@@ -24,7 +24,7 @@
 /* HORIZONTAL_COORDS -> HORIZONTAL_COORD - OK */
 /* DATE -> TIME_LST/LST and TIME_UTC/UTC - OK */
 /*  Problem in time initialization using gettimeofday/gmtime: 1h after UTC on summer, because of DST ?? */
-/* TELESCOPE_MOTION_RATE in arcmin/s */
+/* MOUNT_MOTION_RATE in arcmin/s */
 /* use/snoop a GPS ??*/
 
 #include "eqmod.h"
@@ -76,7 +76,7 @@ double defaultspeed              = 64.0;
 #define GUIDE_WEST  0
 #define GUIDE_EAST  1
 
-int DBG_SCOPE_STATUS;
+int DBG_MOUNT_STATUS;
 int DBG_COMM;
 int DBG_MOUNT;
 
@@ -158,14 +158,14 @@ EQMod::EQMod()
     last_motion_ns       = -1;
     last_motion_ew       = -1;
 
-    DBG_SCOPE_STATUS = INDI::Logger::getInstance().addDebugLevel("Scope Status", "SCOPE");
+    DBG_MOUNT_STATUS = INDI::Logger::getInstance().addDebugLevel("Scope Status", "SCOPE");
     DBG_COMM         = INDI::Logger::getInstance().addDebugLevel("Serial Port", "COMM");
     DBG_MOUNT        = INDI::Logger::getInstance().addDebugLevel("Verbose Mount", "MOUNT");
 
     mount = new Skywatcher(this);
 
-    SetTelescopeCapability(TELESCOPE_CAN_PARK | TELESCOPE_CAN_SYNC | TELESCOPE_CAN_GOTO | TELESCOPE_CAN_ABORT | TELESCOPE_HAS_TIME | TELESCOPE_HAS_LOCATION
-                           | TELESCOPE_HAS_PIER_SIDE | TELESCOPE_HAS_TRACK_RATE | TELESCOPE_HAS_TRACK_MODE | TELESCOPE_CAN_CONTROL_TRACK,
+    SetTelescopeCapability(MOUNT_CAN_PARK | MOUNT_CAN_SYNC | MOUNT_CAN_GOTO | MOUNT_CAN_ABORT | MOUNT_HAS_TIME | MOUNT_HAS_LOCATION
+                           | MOUNT_HAS_PIER_SIDE | MOUNT_HAS_TRACK_RATE | MOUNT_HAS_TRACK_MODE | MOUNT_CAN_CONTROL_TRACK,
                            SLEWMODES);
 
     RAInverted = DEInverted = false;
@@ -178,7 +178,7 @@ EQMod::EQMod()
 
     simulator = new EQModSimulator(this);
 
-#ifdef WITH_SCOPE_LIMITS
+#ifdef WITH_MOUNT_LIMITS
     horizon = new HorizonLimits(this);
 #endif
 
@@ -403,7 +403,7 @@ void EQMod::ISGetProperties(const char *dev)
         }
 #endif
 
-#ifdef WITH_SCOPE_LIMITS
+#ifdef WITH_MOUNT_LIMITS
         if (horizon)
         {
             horizon->ISGetProperties();
@@ -431,7 +431,7 @@ bool EQMod::loadProperties()
     DEStatusLP         = getLight("DESTATUS");
     SlewSpeedsNP       = getNumber("SLEWSPEEDS");
     HemisphereSP       = getSwitch("HEMISPHERE");
-    TrackDefaultSP     = getSwitch("TELESCOPE_TRACK_DEFAULT");
+    TrackDefaultSP     = getSwitch("MOUNT_TRACK_DEFAULT");
     ReverseDECSP       = getSwitch("REVERSEDEC");
     EnforceCWUP        = getSwitch("FORCECWUP");
 
@@ -468,7 +468,7 @@ bool EQMod::loadProperties()
 
     INDI::GuiderInterface::initGuiderProperties(this->getDeviceName(), MOTION_TAB);
 
-#ifdef WITH_SCOPE_LIMITS
+#ifdef WITH_MOUNT_LIMITS
     if (horizon)
     {
         if (!horizon->initProperties())
@@ -679,7 +679,7 @@ bool EQMod::updateProperties()
     }
 #endif
 
-#ifdef WITH_SCOPE_LIMITS
+#ifdef WITH_MOUNT_LIMITS
     if (horizon)
     {
         if (!horizon->updateProperties())
@@ -787,7 +787,7 @@ bool EQMod::ReadScopeStatus()
 
     fs_sexa(hrlst, lst, 2, 360000);
     hrlst[11] = '\0';
-    DEBUGF(DBG_SCOPE_STATUS, "Compute local time: lst=%2.8f (%s) - julian date=%8.8f", lst, hrlst, juliandate);
+    DEBUGF(DBG_MOUNT_STATUS, "Compute local time: lst=%2.8f (%s) - julian date=%8.8f", lst, hrlst, juliandate);
 
     IUUpdateNumber(TimeLSTNP, &lst, (char **)(datenames), 1);
     TimeLSTNP->s = IPS_OK;
@@ -801,7 +801,7 @@ bool EQMod::ReadScopeStatus()
     {
         currentRAEncoder = mount->GetRAEncoder();
         currentDEEncoder = mount->GetDEEncoder();
-        DEBUGF(DBG_SCOPE_STATUS, "Current encoders RA=%ld DE=%ld", currentRAEncoder, currentDEEncoder);
+        DEBUGF(DBG_MOUNT_STATUS, "Current encoders RA=%ld DE=%ld", currentRAEncoder, currentDEEncoder);
         EncodersToRADec(currentRAEncoder, currentDEEncoder, lst, &currentRA, &currentDEC, &currentHA);
         alignedRA    = currentRA;
         alignedDEC   = currentDEC;
@@ -848,7 +848,7 @@ bool EQMod::ReadScopeStatus()
 #endif
         if (!aligned && (syncdata.lst != 0.0))
         {
-            DEBUGF(DBG_SCOPE_STATUS, "Aligning with last sync delta RA %g DE %g", syncdata.deltaRA, syncdata.deltaDEC);
+            DEBUGF(DBG_MOUNT_STATUS, "Aligning with last sync delta RA %g DE %g", syncdata.deltaRA, syncdata.deltaDEC);
             // should check values are in range!
             alignedRA += syncdata.deltaRA;
             alignedDEC += syncdata.deltaDEC;
@@ -957,12 +957,12 @@ bool EQMod::ReadScopeStatus()
                     // For AstroEQ (needs an explicit :G command at the end of gotos)
                     mount->ResetMotions();
 
-                    if ((RememberTrackState == SCOPE_TRACKING) || ((sw != NULL) && (sw->s == ISS_ON)))
+                    if ((RememberTrackState == MOUNT_TRACKING) || ((sw != NULL) && (sw->s == ISS_ON)))
                     {
                         char *name;
-                        TrackState = SCOPE_TRACKING;
+                        TrackState = MOUNT_TRACKING;
 
-                        if (RememberTrackState == SCOPE_TRACKING)
+                        if (RememberTrackState == MOUNT_TRACKING)
                         {
                             sw   = IUFindOnSwitch(&TrackModeSP);
                             name = sw->name;
@@ -994,7 +994,7 @@ bool EQMod::ReadScopeStatus()
                     }
                     else
                     {
-                        TrackState = SCOPE_IDLE;
+                        TrackState = MOUNT_IDLE;
                         LOG_INFO("Telescope slew is complete. Stopping...");
                     }
                     gotoparams.completed = true;
@@ -1003,7 +1003,7 @@ bool EQMod::ReadScopeStatus()
             }
         }
 
-#ifdef WITH_SCOPE_LIMITS
+#ifdef WITH_MOUNT_LIMITS
         if (horizon)
         {
             if (horizon->checkLimits(horizvalues[0], horizvalues[1], TrackState, gotoInProgress()))
@@ -1011,7 +1011,7 @@ bool EQMod::ReadScopeStatus()
         }
 #endif
 
-        if (TrackState == SCOPE_PARKING)
+        if (TrackState == MOUNT_PARKING)
         {
             if (!(mount->IsRARunning()) && !(mount->IsDERunning()))
             {
@@ -1060,7 +1060,7 @@ bool EQMod::ReadScopeStatus()
             }
         }
 
-        if (TrackState == SCOPE_AUTOHOMING)
+        if (TrackState == MOUNT_AUTOHOMING)
         {
             unsigned long indexRA = 0, indexDE = 0;
 
@@ -1070,7 +1070,7 @@ bool EQMod::ReadScopeStatus()
             case AUTO_HOME_IDLE:
             case AUTO_HOME_CONFIRM:
                 AutohomeState = AUTO_HOME_IDLE;
-                TrackState    = SCOPE_IDLE;
+                TrackState    = MOUNT_IDLE;
                 LOG_INFO("Invalid status while Autohoming. Aborting");
                 break;
             case AUTO_HOME_WAIT_PHASE1:
@@ -1352,7 +1352,7 @@ bool EQMod::ReadScopeStatus()
                            mount->GetRAEncoderHome(), mount->GetDEEncoderHome());
                     mount->SetRAAxisPosition(mount->GetRAEncoderHome());
                     mount->SetDEAxisPosition(mount->GetDEEncoderHome());
-                    TrackState    = SCOPE_IDLE;
+                    TrackState    = MOUNT_IDLE;
                     AutohomeState = AUTO_HOME_IDLE;
                     AutoHomeSP->s = IPS_IDLE;
                     IUResetSwitch(AutoHomeSP);
@@ -1767,14 +1767,14 @@ bool EQMod::Goto(double r, double d)
 {
     double juliandate;
     double lst;
-#ifdef WITH_SCOPE_LIMITS
+#ifdef WITH_MOUNT_LIMITS
     struct ln_equ_posn gotoradec;
     struct ln_hrz_posn gotoaltaz;
     double gotoaz;
     double gotoalt;
 #endif
 
-    if ((TrackState == SCOPE_SLEWING) || (TrackState == SCOPE_PARKING) || (TrackState == SCOPE_PARKED))
+    if ((TrackState == MOUNT_SLEWING) || (TrackState == MOUNT_PARKING) || (TrackState == MOUNT_PARKED))
     {
         LOG_WARN("Can not perform goto while goto/park in progress, or scope parked.");
         EqNP.s = IPS_IDLE;
@@ -1785,7 +1785,7 @@ bool EQMod::Goto(double r, double d)
     juliandate = getJulianDate();
     lst        = getLst(juliandate, getLongitude());
 
-#ifdef WITH_SCOPE_LIMITS
+#ifdef WITH_MOUNT_LIMITS
     gotoradec.ra  = (r * 360.0) / 24.0;
     gotoradec.dec = d;
     /* uses sidereal time, not local sidereal time */
@@ -1931,7 +1931,7 @@ bool EQMod::Goto(double r, double d)
     // This is already set before Goto in INDI::Telescope
     //RememberTrackState = TrackState;
 
-    TrackState         = SCOPE_SLEWING;
+    TrackState         = MOUNT_SLEWING;
 
     //EqREqNP.s = IPS_BUSY;
     EqNP.s = IPS_BUSY;
@@ -1950,7 +1950,7 @@ bool EQMod::Park()
 {
     if (!isParked())
     {
-        if (TrackState == SCOPE_SLEWING)
+        if (TrackState == MOUNT_SLEWING)
         {
             LOG_INFO("Can not park while slewing...");
             ParkSP.s = IPS_ALERT;
@@ -1978,7 +1978,7 @@ bool EQMod::Park()
         }
         //TrackModeSP->s = IPS_IDLE;
         //IDSetSwitch(TrackModeSP, NULL);
-        TrackState = SCOPE_PARKING;
+        TrackState = MOUNT_PARKING;
         ParkSP.s   = IPS_BUSY;
         IDSetSwitch(&ParkSP, NULL);
         LOG_INFO("Telescope park in progress...");
@@ -2011,7 +2011,7 @@ bool EQMod::Sync(double ra, double dec)
     juliandate = getJulianDate();
     lst        = getLst(juliandate, getLongitude());
 
-    if (TrackState != SCOPE_TRACKING)
+    if (TrackState != MOUNT_TRACKING)
     {
         EqNP.s = IPS_ALERT;
         IDSetNumber(&EqNP, NULL);
@@ -2117,9 +2117,9 @@ bool EQMod::Sync(double ra, double dec)
         ;
         IUFindNumber(StandardSyncPointNP, "STANDARDSYNCPOINT_CELESTIAL_DE")->value = syncdata.targetDEC;
         ;
-        IUFindNumber(StandardSyncPointNP, "STANDARDSYNCPOINT_TELESCOPE_RA")->value = syncdata.telescopeRA;
+        IUFindNumber(StandardSyncPointNP, "STANDARDSYNCPOINT_MOUNT_RA")->value = syncdata.telescopeRA;
         ;
-        IUFindNumber(StandardSyncPointNP, "STANDARDSYNCPOINT_TELESCOPE_DE")->value = syncdata.telescopeDEC;
+        IUFindNumber(StandardSyncPointNP, "STANDARDSYNCPOINT_MOUNT_DE")->value = syncdata.telescopeDEC;
         ;
         IDSetNumber(StandardSyncPointNP, NULL);
 
@@ -2285,7 +2285,7 @@ bool EQMod::ISNewNumber(const char *dev, const char *name, double values[], char
         if (strcmp(name, "SLEWSPEEDS") == 0)
         {
             /* TODO: don't change speed in gotos gotoparams.inprogress... */
-            if (TrackState != SCOPE_TRACKING)
+            if (TrackState != MOUNT_TRACKING)
             {
                 try
                 {
@@ -2314,7 +2314,7 @@ bool EQMod::ISNewNumber(const char *dev, const char *name, double values[], char
         if (!strcmp(name, GuideNSNP.name) || !strcmp(name, GuideWENP.name))
         {
             // Unless we're in track mode, we don't obey guide commands.
-            if (TrackState != SCOPE_TRACKING)
+            if (TrackState != MOUNT_TRACKING)
             {
                 GuideNSNP.s = IPS_IDLE;
                 IDSetNumber(&GuideNSNP, NULL);
@@ -2362,8 +2362,8 @@ bool EQMod::ISNewNumber(const char *dev, const char *name, double values[], char
             syncdata.lst          = IUFindNumber(StandardSyncPointNP, "STANDARDSYNCPOINT_SYNCTIME")->value;
             syncdata.targetRA     = IUFindNumber(StandardSyncPointNP, "STANDARDSYNCPOINT_CELESTIAL_RA")->value;
             syncdata.targetDEC    = IUFindNumber(StandardSyncPointNP, "STANDARDSYNCPOINT_CELESTIAL_DE")->value;
-            syncdata.telescopeRA  = IUFindNumber(StandardSyncPointNP, "STANDARDSYNCPOINT_TELESCOPE_RA")->value;
-            syncdata.telescopeDEC = IUFindNumber(StandardSyncPointNP, "STANDARDSYNCPOINT_TELESCOPE_DE")->value;
+            syncdata.telescopeRA  = IUFindNumber(StandardSyncPointNP, "STANDARDSYNCPOINT_MOUNT_RA")->value;
+            syncdata.telescopeDEC = IUFindNumber(StandardSyncPointNP, "STANDARDSYNCPOINT_MOUNT_DE")->value;
             syncdata.deltaRA      = syncdata.targetRA - syncdata.telescopeRA;
             syncdata.deltaDEC     = syncdata.targetDEC - syncdata.telescopeDEC;
             IDSetNumber(StandardSyncPointNP, NULL);
@@ -2403,7 +2403,7 @@ bool EQMod::ISNewNumber(const char *dev, const char *name, double values[], char
             return true;
     }
 
-#ifdef WITH_SCOPE_LIMITS
+#ifdef WITH_MOUNT_LIMITS
     if (horizon)
     {
         compose = horizon->ISNewNumber(dev, name, values, names, n);
@@ -2537,9 +2537,9 @@ bool EQMod::ISNewSwitch(const char *dev, const char *name, ISState *states, char
                 ;
                 IUFindNumber(StandardSyncPointNP, "STANDARDSYNCPOINT_CELESTIAL_DE")->value = syncdata.targetDEC;
                 ;
-                IUFindNumber(StandardSyncPointNP, "STANDARDSYNCPOINT_TELESCOPE_RA")->value = syncdata.telescopeRA;
+                IUFindNumber(StandardSyncPointNP, "STANDARDSYNCPOINT_MOUNT_RA")->value = syncdata.telescopeRA;
                 ;
-                IUFindNumber(StandardSyncPointNP, "STANDARDSYNCPOINT_TELESCOPE_DE")->value = syncdata.telescopeDEC;
+                IUFindNumber(StandardSyncPointNP, "STANDARDSYNCPOINT_MOUNT_DE")->value = syncdata.telescopeDEC;
                 ;
                 IDSetNumber(StandardSyncPointNP, NULL);
                 LOG_INFO("Cleared current Sync Data");
@@ -2583,9 +2583,9 @@ bool EQMod::ISNewSwitch(const char *dev, const char *name, ISState *states, char
         {
             if (AutoHomeSP && strcmp(name, AutoHomeSP->name) == 0)
             {
-                if ((TrackState != SCOPE_IDLE) && (TrackState != SCOPE_AUTOHOMING))
+                if ((TrackState != MOUNT_IDLE) && (TrackState != MOUNT_AUTOHOMING))
                 {
-                    if (TrackState != SCOPE_AUTOHOMING)
+                    if (TrackState != MOUNT_AUTOHOMING)
                     {
                         AutoHomeSP->s = IPS_IDLE;
                         IUResetSwitch(AutoHomeSP);
@@ -2595,7 +2595,7 @@ bool EQMod::ISNewSwitch(const char *dev, const char *name, ISState *states, char
                     return true;
                 }
 
-                if (TrackState == SCOPE_AUTOHOMING)
+                if (TrackState == MOUNT_AUTOHOMING)
                 {
                     AutoHomeSP->s = IPS_IDLE;
                     IUResetSwitch(AutoHomeSP);
@@ -2621,7 +2621,7 @@ bool EQMod::ISNewSwitch(const char *dev, const char *name, ISState *states, char
                     AutoHomeSP->s = IPS_BUSY;
                     LOG_INFO("Starting Autohome.");
                     IDSetSwitch(AutoHomeSP, NULL);
-                    TrackState = SCOPE_AUTOHOMING;
+                    TrackState = MOUNT_AUTOHOMING;
                     try
                     {
                         LOG_INFO("AutoHome phase 1: turning off aux encoders");
@@ -2671,7 +2671,7 @@ bool EQMod::ISNewSwitch(const char *dev, const char *name, ISState *states, char
                         IUResetSwitch(AutoHomeSP);
                         IDSetSwitch(AutoHomeSP, NULL);
                         AutohomeState = AUTO_HOME_IDLE;
-                        TrackState    = SCOPE_IDLE;
+                        TrackState    = MOUNT_IDLE;
                         return (e.DefaultHandleException(this));
                     }
                 }
@@ -2708,7 +2708,7 @@ bool EQMod::ISNewSwitch(const char *dev, const char *name, ISState *states, char
                 IUUpdateSwitch(RAPPECTrainingSP, states, names, n);
                 if (RAPPECTrainingSP->sp[1].s == ISS_ON)
                 {
-                    if (TrackState != SCOPE_TRACKING)
+                    if (TrackState != MOUNT_TRACKING)
                     {
                         RAPPECTrainingSP->s = IPS_IDLE;
                         LOG_WARN("Can not start RA PPEC Training. Scope not tracking");
@@ -2765,7 +2765,7 @@ bool EQMod::ISNewSwitch(const char *dev, const char *name, ISState *states, char
                 IUUpdateSwitch(DEPPECTrainingSP, states, names, n);
                 if (DEPPECTrainingSP->sp[1].s == ISS_ON)
                 {
-                    if (TrackState != SCOPE_TRACKING)
+                    if (TrackState != MOUNT_TRACKING)
                     {
                         DEPPECTrainingSP->s = IPS_IDLE;
                         LOG_WARN("Can not start DEC PPEC Training. Scope not tracking");
@@ -2862,7 +2862,7 @@ bool EQMod::ISNewSwitch(const char *dev, const char *name, ISState *states, char
         if (compose)
             return true;
     }
-#ifdef WITH_SCOPE_LIMITS
+#ifdef WITH_MOUNT_LIMITS
     if (horizon)
     {
         compose = horizon->ISNewSwitch(dev, name, states, names, n);
@@ -2897,7 +2897,7 @@ bool EQMod::ISNewText(const char *dev, const char *name, char *texts[], char *na
         if (compose)
             return true;
     }
-#ifdef WITH_SCOPE_LIMITS
+#ifdef WITH_MOUNT_LIMITS
     if (horizon)
     {
         compose = horizon->ISNewText(dev, name, texts, names, n);
@@ -2987,7 +2987,7 @@ bool EQMod::MoveNS(INDI_DIR_NS dir, TelescopeMotionCommand command)
         switch (command)
         {
         case MOTION_START:
-            if (gotoInProgress() || (TrackState == SCOPE_PARKING) || (TrackState == SCOPE_PARKED))
+            if (gotoInProgress() || (TrackState == MOUNT_PARKING) || (TrackState == MOUNT_PARKED))
             {
                 LOG_WARN("Can not slew while goto/park in progress, or scope parked.");
                 return false;
@@ -2997,21 +2997,21 @@ bool EQMod::MoveNS(INDI_DIR_NS dir, TelescopeMotionCommand command)
             if (DEInverted)
                 rate = -rate;
             mount->SlewDE(rate);
-            TrackState = SCOPE_SLEWING;
+            TrackState = MOUNT_SLEWING;
             break;
 
         case MOTION_STOP:
             LOGF_INFO("%s Slew stopped", dirStr);
             mount->StopDE();
             //if (TrackModeSP->s == IPS_BUSY)
-            if (RememberTrackState == SCOPE_TRACKING)
+            if (RememberTrackState == MOUNT_TRACKING)
             {
                 LOG_INFO("Restarting DE Tracking...");
-                TrackState = SCOPE_TRACKING;
+                TrackState = MOUNT_TRACKING;
                 mount->StartDETracking(GetDETrackRate());
             }
             else
-                TrackState = SCOPE_IDLE;
+                TrackState = MOUNT_IDLE;
 
             break;
         }
@@ -3033,7 +3033,7 @@ bool EQMod::MoveWE(INDI_DIR_WE dir, TelescopeMotionCommand command)
         switch (command)
         {
         case MOTION_START:
-            if (gotoInProgress() || (TrackState == SCOPE_PARKING) || (TrackState == SCOPE_PARKED))
+            if (gotoInProgress() || (TrackState == MOUNT_PARKING) || (TrackState == MOUNT_PARKED))
             {
                 LOG_WARN("Can not slew while goto/park in progress, or scope parked.");
                 return false;
@@ -3043,21 +3043,21 @@ bool EQMod::MoveWE(INDI_DIR_WE dir, TelescopeMotionCommand command)
             if (RAInverted)
                 rate = -rate;
             mount->SlewRA(rate);
-            TrackState = SCOPE_SLEWING;
+            TrackState = MOUNT_SLEWING;
             break;
 
         case MOTION_STOP:
             LOGF_INFO("%s Slew stopped", dirStr);
             mount->StopRA();
             //if (TrackModeSP->s == IPS_BUSY)
-            if (RememberTrackState == SCOPE_TRACKING)
+            if (RememberTrackState == MOUNT_TRACKING)
             {
                 LOG_INFO("Restarting RA Tracking...");
-                TrackState = SCOPE_TRACKING;
+                TrackState = MOUNT_TRACKING;
                 mount->StartRATracking(GetRATrackRate());
             }
             else
-                TrackState = SCOPE_IDLE;
+                TrackState = MOUNT_IDLE;
             break;
         }
     }
@@ -3106,7 +3106,7 @@ bool EQMod::Abort()
     AutoHomeSP->s = IPS_IDLE;
     IUResetSwitch(AutoHomeSP);
     IDSetSwitch(AutoHomeSP, NULL);
-    TrackState = SCOPE_IDLE;
+    TrackState = MOUNT_IDLE;
     if (gotoparams.completed == false)
         gotoparams.completed = true;
 
@@ -3468,14 +3468,14 @@ bool EQMod::SetTrackEnabled(bool enabled)
         if (enabled)
         {
             LOGF_INFO("Start Tracking (%s).", IUFindOnSwitch(&TrackModeSP)->label);
-            TrackState     = SCOPE_TRACKING;
+            TrackState     = MOUNT_TRACKING;
             mount->StartRATracking(GetRATrackRate());
             mount->StartDETracking(GetDETrackRate());
         }
         else if (enabled == false)
         {
             LOGF_WARN("Stopping Tracking (%s).", IUFindOnSwitch(&TrackModeSP)->label);
-            TrackState     = SCOPE_IDLE;
+            TrackState     = MOUNT_IDLE;
             mount->StopRA();
             mount->StopDE();
         }

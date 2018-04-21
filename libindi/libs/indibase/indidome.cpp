@@ -97,16 +97,16 @@ bool Dome::initProperties()
                        ISR_1OFMANY, 0, IPS_IDLE);
 
     // Active Devices
-    IUFillText(&ActiveDeviceT[0], "ACTIVE_TELESCOPE", "Telescope", "Telescope Simulator");
+    IUFillText(&ActiveDeviceT[0], "ACTIVE_TELESCOPE", "Mount", "Mount Simulator");
     IUFillText(&ActiveDeviceT[1], "ACTIVE_WEATHER", "Weather", "WunderGround");
     IUFillTextVector(&ActiveDeviceTP, ActiveDeviceT, 2, getDeviceName(), "ACTIVE_DEVICES", "Snoop devices", OPTIONS_TAB,
                      IP_RW, 60, IPS_IDLE);
 
     // Use locking if telescope is unparked
-    IUFillSwitch(&TelescopeClosedLockT[0], "NO_ACTION", "Ignore Telescope", ISS_ON);
-    IUFillSwitch(&TelescopeClosedLockT[1], "LOCK_PARKING", "Telescope locks", ISS_OFF);
-    IUFillSwitchVector(&TelescopeClosedLockTP, TelescopeClosedLockT, 2, getDeviceName(), "TELESCOPE_POLICY",
-                       "Telescope parking policy", OPTIONS_TAB, IP_RW, ISR_1OFMANY, 60, IPS_IDLE);
+    IUFillSwitch(&MountClosedLockT[0], "NO_ACTION", "Ignore Mount", ISS_ON);
+    IUFillSwitch(&MountClosedLockT[1], "LOCK_PARKING", "Mount locks", ISS_OFF);
+    IUFillSwitchVector(&MountClosedLockTP, MountClosedLockT, 2, getDeviceName(), "MOUNT_POLICY",
+                       "Mount parking policy", OPTIONS_TAB, IP_RW, ISR_1OFMANY, 60, IPS_IDLE);
 
     // Measurements
     IUFillNumber(&DomeMeasurementsN[DM_DOME_RADIUS], "DM_DOME_RADIUS", "Radius (m)", "%6.2f", 0.0, 50.0, 1.0, 0.0);
@@ -183,9 +183,9 @@ bool Dome::initProperties()
 
     IDSnoopDevice(ActiveDeviceT[0].text, "EQUATORIAL_EOD_COORD");
     IDSnoopDevice(ActiveDeviceT[0].text, "GEOGRAPHIC_COORD");
-    IDSnoopDevice(ActiveDeviceT[0].text, "TELESCOPE_PARK");
+    IDSnoopDevice(ActiveDeviceT[0].text, "MOUNT_PARK");
     if (CanAbsMove())
-        IDSnoopDevice(ActiveDeviceT[0].text, "TELESCOPE_PIER_SIDE");
+        IDSnoopDevice(ActiveDeviceT[0].text, "MOUNT_PIER_SIDE");
 
     IDSnoopDevice(ActiveDeviceT[1].text, "WEATHER_STATUS");
 
@@ -215,8 +215,8 @@ void Dome::ISGetProperties(const char *dev)
 
     defineText(&ActiveDeviceTP);
     loadConfig(true, "ACTIVE_DEVICES");
-    defineSwitch(&TelescopeClosedLockTP);
-    loadConfig(true, "TELESCOPE_POLICY");
+    defineSwitch(&MountClosedLockTP);
+    loadConfig(true, "MOUNT_POLICY");
 
     controller->ISGetProperties(dev);
     return;
@@ -583,23 +583,23 @@ bool Dome::ISNewSwitch(const char *dev, const char *name, ISState *states, char 
             return true;
         }
 
-        // Telescope parking policy
-        if (!strcmp(name, TelescopeClosedLockTP.name))
+        // Mount parking policy
+        if (!strcmp(name, MountClosedLockTP.name))
         {
             if (n == 1)
             {
-                if (!strcmp(names[0], TelescopeClosedLockT[0].name))
-                    DEBUG(Logger::DBG_SESSION, "Telescope parking policy set to: Ignore Telescope");
-                else if (!strcmp(names[0], TelescopeClosedLockT[1].name))
-                    DEBUG(Logger::DBG_SESSION, "Warning: Telescope parking policy set to: Telescope locks. This "
+                if (!strcmp(names[0], MountClosedLockT[0].name))
+                    DEBUG(Logger::DBG_SESSION, "Mount parking policy set to: Ignore Mount");
+                else if (!strcmp(names[0], MountClosedLockT[1].name))
+                    DEBUG(Logger::DBG_SESSION, "Warning: Mount parking policy set to: Mount locks. This "
                                                      "disallows the dome from parking when telescope is unparked, and "
                                                      "can lead to damage to hardware if it rains!");
             }
-            IUUpdateSwitch(&TelescopeClosedLockTP, states, names, n);
-            TelescopeClosedLockTP.s = IPS_OK;
-            IDSetSwitch(&TelescopeClosedLockTP, nullptr);
+            IUUpdateSwitch(&MountClosedLockTP, states, names, n);
+            MountClosedLockTP.s = IPS_OK;
+            IDSetSwitch(&MountClosedLockTP, nullptr);
 
-            triggerSnoop(ActiveDeviceT[0].text, "TELESCOPE_PARK");
+            triggerSnoop(ActiveDeviceT[0].text, "MOUNT_PARK");
             return true;
         }
     }
@@ -623,9 +623,9 @@ bool Dome::ISNewText(const char *dev, const char *name, char *texts[], char *nam
             IDSnoopDevice(ActiveDeviceT[0].text, "EQUATORIAL_EOD_COORD");
             IDSnoopDevice(ActiveDeviceT[0].text, "TARGET_EOD_COORD");
             IDSnoopDevice(ActiveDeviceT[0].text, "GEOGRAPHIC_COORD");
-            IDSnoopDevice(ActiveDeviceT[0].text, "TELESCOPE_PARK");
+            IDSnoopDevice(ActiveDeviceT[0].text, "MOUNT_PARK");
             if (CanAbsMove())
-                IDSnoopDevice(ActiveDeviceT[0].text, "TELESCOPE_PIER_SIDE");
+                IDSnoopDevice(ActiveDeviceT[0].text, "MOUNT_PIER_SIDE");
             IDSnoopDevice(ActiveDeviceT[1].text, "WEATHER_STATUS");
 
             return true;
@@ -752,8 +752,8 @@ bool Dome::ISSnoopDevice(XMLEle *root)
         return true;
     }
 
-    // Check Telescope Park status
-    if (!strcmp("TELESCOPE_PARK", propName))
+    // Check Mount Park status
+    if (!strcmp("MOUNT_PARK", propName))
     {
         if (!strcmp(findXMLAttValu(root, "state"), "Ok"))
         {
@@ -772,8 +772,8 @@ bool Dome::ISSnoopDevice(XMLEle *root)
                 else if (!IsLocked && !strcmp(elemName, "UNPARK") && !strcmp(pcdataXMLEle(ep), "On"))
                     IsLocked = true;
             }
-            if (prevState != IsLocked && TelescopeClosedLockT[1].s == ISS_ON)
-                DEBUGF(Logger::DBG_SESSION, "Telescope status changed. Lock is set to: %s",
+            if (prevState != IsLocked && MountClosedLockT[1].s == ISS_ON)
+                DEBUGF(Logger::DBG_SESSION, "Mount status changed. Lock is set to: %s",
                        IsLocked ? "locked" : "unlocked");
         }
         return true;
@@ -801,7 +801,7 @@ bool Dome::ISSnoopDevice(XMLEle *root)
             return true;
         }
     }
-    if (!strcmp("TELESCOPE_PIER_SIDE", propName))
+    if (!strcmp("MOUNT_PIER_SIDE", propName))
     {
         // set defaults to say we have no valid information from mount
         bool isEast=false;
@@ -838,7 +838,7 @@ bool Dome::saveConfigItems(FILE *fp)
     DefaultDevice::saveConfigItems(fp);
 
     IUSaveConfigText(fp, &ActiveDeviceTP);
-    IUSaveConfigSwitch(fp, &TelescopeClosedLockTP);
+    IUSaveConfigSwitch(fp, &MountClosedLockTP);
     IUSaveConfigNumber(fp, &PresetNP);
     IUSaveConfigNumber(fp, &DomeParamNP);
     IUSaveConfigNumber(fp, &DomeMeasurementsNP);
@@ -858,7 +858,7 @@ void Dome::triggerSnoop(const char *driverName, const char *snoopedProp)
 
 bool Dome::isLocked()
 {
-    return TelescopeClosedLockT[1].s == ISS_ON && IsLocked;
+    return MountClosedLockT[1].s == ISS_ON && IsLocked;
 }
 
 void Dome::buttonHelper(const char *button_n, ISState state, void *context)
@@ -1046,7 +1046,7 @@ bool Dome::GetTargetAz(double &Az, double &Alt, double &minAz, double &maxAz)
         //  if we got here because we turned off the PIER_SIDE switches in a target goto
         //  lets try get it back on
         if (CanAbsMove())
-            triggerSnoop(ActiveDeviceT[0].text, "TELESCOPE_PIER_SIDE");
+            triggerSnoop(ActiveDeviceT[0].text, "MOUNT_PIER_SIDE");
 
     }
 

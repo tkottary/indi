@@ -80,14 +80,14 @@ bool ScopeSim::Abort()
         IDSetNumber(&EqNP, nullptr);
     }
 
-    TrackState = SCOPE_IDLE;
+    TrackState = MOUNT_IDLE;
 
     AxisStatusRA = AxisStatusDEC = STOPPED; // This marvelous inertia free scope can be stopped instantly!
 
     AbortSP.s = IPS_OK;
     IUResetSwitch(&AbortSP);
     IDSetSwitch(&AbortSP, nullptr);
-    LOG_INFO("Telescope aborted.");
+    LOG_INFO("Mount aborted.");
 
     return true;
 }
@@ -110,7 +110,7 @@ bool ScopeSim::Disconnect()
 
 const char *ScopeSim::getDefaultName()
 {
-    return (const char *)"Simple Telescope Simulator";
+    return (const char *)"Simple Mount Simulator";
 }
 
 bool ScopeSim::Goto(double ra, double dec)
@@ -130,13 +130,13 @@ bool ScopeSim::Goto(double ra, double dec)
 
     // Call the alignment subsystem to translate the celestial reference frame coordinate
     // into a telescope reference frame coordinate
-    TelescopeDirectionVector TDV;
+    MountDirectionVector TDV;
     ln_hrz_posn AltAz { 0, 0 };
 
-    if (TransformCelestialToTelescope(ra, dec, 0.0, TDV))
+    if (TransformCelestialToMount(ra, dec, 0.0, TDV))
     {
         // The alignment subsystem has successfully transformed my coordinate
-        AltitudeAzimuthFromTelescopeDirectionVector(TDV, AltAz);
+        AltitudeAzimuthFromMountDirectionVector(TDV, AltAz);
     }
     else
     {
@@ -161,7 +161,7 @@ bool ScopeSim::Goto(double ra, double dec)
         if (HavePosition)
         {
             ln_get_hrz_from_equ(&EquatorialCoordinates, &Position, ln_get_julian_from_sys(), &AltAz);
-            TDV = TelescopeDirectionVectorFromAltitudeAzimuth(AltAz);
+            TDV = MountDirectionVectorFromAltitudeAzimuth(AltAz);
             switch (GetApproximateMountAlignment())
             {
                 case ZENITH:
@@ -179,13 +179,13 @@ bool ScopeSim::Goto(double ra, double dec)
                     TDV.RotateAroundY(Position.lat + 90.0);
                     break;
             }
-            AltitudeAzimuthFromTelescopeDirectionVector(TDV, AltAz);
+            AltitudeAzimuthFromMountDirectionVector(TDV, AltAz);
         }
         else
         {
             // The best I can do is just do a direct conversion to Alt/Az
-            TDV = TelescopeDirectionVectorFromEquatorialCoordinates(EquatorialCoordinates);
-            AltitudeAzimuthFromTelescopeDirectionVector(TDV, AltAz);
+            TDV = MountDirectionVectorFromEquatorialCoordinates(EquatorialCoordinates);
+            AltitudeAzimuthFromMountDirectionVector(TDV, AltAz);
         }
     }
 
@@ -240,7 +240,7 @@ bool ScopeSim::Goto(double ra, double dec)
         AxisStatusRA = SLEWING_TO;
     }
 
-    TrackState = SCOPE_SLEWING;
+    TrackState = MOUNT_SLEWING;
 
     EqNP.s = IPS_BUSY;
 
@@ -250,7 +250,7 @@ bool ScopeSim::Goto(double ra, double dec)
 bool ScopeSim::initProperties()
 {
     /* Make sure to init parent properties first */
-    INDI::Telescope::initProperties();
+    INDI::Mount::initProperties();
 
     // Let's simulate it to be an F/10 8" telescope
     ScopeParametersN[0].value = 203;
@@ -258,7 +258,7 @@ bool ScopeSim::initProperties()
     ScopeParametersN[2].value = 203;
     ScopeParametersN[3].value = 2000;
 
-    TrackState = SCOPE_IDLE;
+    TrackState = MOUNT_IDLE;
 
     /* Add debug controls so we may debug driver if necessary */
     addDebugControl();
@@ -278,7 +278,7 @@ bool ScopeSim::ISNewBLOB(const char *dev, const char *name, int sizes[], int blo
         ProcessAlignmentBLOBProperties(this, name, sizes, blobsizes, blobs, formats, names, n);
     }
     // Pass it up the chain
-    return INDI::Telescope::ISNewBLOB(dev, name, sizes, blobsizes, blobs, formats, names, n);
+    return INDI::Mount::ISNewBLOB(dev, name, sizes, blobsizes, blobs, formats, names, n);
 }
 
 bool ScopeSim::ISNewNumber(const char *dev, const char *name, double values[], char *names[], int n)
@@ -293,7 +293,7 @@ bool ScopeSim::ISNewNumber(const char *dev, const char *name, double values[], c
 
     //  if we didn't process it, continue up the chain, let somebody else
     //  give it a shot
-    return INDI::Telescope::ISNewNumber(dev, name, values, names, n);
+    return INDI::Mount::ISNewNumber(dev, name, values, names, n);
 }
 
 bool ScopeSim::ISNewSwitch(const char *dev, const char *name, ISState *states, char *names[], int n)
@@ -305,7 +305,7 @@ bool ScopeSim::ISNewSwitch(const char *dev, const char *name, ISState *states, c
     }
 
     //  Nobody has claimed this, so, ignore it
-    return INDI::Telescope::ISNewSwitch(dev, name, states, names, n);
+    return INDI::Mount::ISNewSwitch(dev, name, states, names, n);
 }
 
 bool ScopeSim::ISNewText(const char *dev, const char *name, char *texts[], char *names[], int n)
@@ -316,10 +316,10 @@ bool ScopeSim::ISNewText(const char *dev, const char *name, char *texts[], char 
         ProcessAlignmentTextProperties(this, name, texts, names, n);
     }
     // Pass it up the chain
-    return INDI::Telescope::ISNewText(dev, name, texts, names, n);
+    return INDI::Mount::ISNewText(dev, name, texts, names, n);
 }
 
-bool ScopeSim::MoveNS(INDI_DIR_NS dir, TelescopeMotionCommand command)
+bool ScopeSim::MoveNS(INDI_DIR_NS dir, MountMotionCommand command)
 {
     AxisDirection axisDir = (dir == DIRECTION_NORTH) ? FORWARD : REVERSE;
     AxisStatus axisStat   = (command == MOTION_START) ? SLEWING : STOPPED;
@@ -331,7 +331,7 @@ bool ScopeSim::MoveNS(INDI_DIR_NS dir, TelescopeMotionCommand command)
     return true;
 }
 
-bool ScopeSim::MoveWE(INDI_DIR_WE dir, TelescopeMotionCommand command)
+bool ScopeSim::MoveWE(INDI_DIR_WE dir, MountMotionCommand command)
 {
     AxisDirection axisDir = (dir == DIRECTION_WEST) ? FORWARD : REVERSE;
     AxisStatus axisStat   = (command == MOTION_START) ? SLEWING : STOPPED;
@@ -350,13 +350,13 @@ bool ScopeSim::ReadScopeStatus()
     AltAz.alt                    = double(CurrentEncoderMicrostepsDEC) / MICROSTEPS_PER_DEGREE;
     AltAz.az                     = double(CurrentEncoderMicrostepsRA) / MICROSTEPS_PER_DEGREE;
 
-    TelescopeDirectionVector TDV = TelescopeDirectionVectorFromAltitudeAzimuth(AltAz);
+    MountDirectionVector TDV = MountDirectionVectorFromAltitudeAzimuth(AltAz);
     double RightAscension, Declination;
 
-    if (!TransformTelescopeToCelestial(TDV, RightAscension, Declination))
+    if (!TransformMountToCelestial(TDV, RightAscension, Declination))
     {
         if (TraceThisTick)
-            DEBUG(DBG_SIMULATOR, "ReadScopeStatus - TransformTelescopeToCelestial failed");
+            DEBUG(DBG_SIMULATOR, "ReadScopeStatus - TransformMountToCelestial failed");
 
         bool HavePosition = false;
         ln_lnlat_posn Position { 0, 0 };
@@ -376,7 +376,7 @@ bool ScopeSim::ReadScopeStatus()
             if (TraceThisTick)
                 DEBUG(DBG_SIMULATOR, "ReadScopeStatus - HavePosition true");
 
-            TelescopeDirectionVector RotatedTDV(TDV);
+            MountDirectionVector RotatedTDV(TDV);
 
             switch (GetApproximateMountAlignment())
             {
@@ -391,7 +391,7 @@ bool ScopeSim::ReadScopeStatus()
                     // Rotate the TDV coordinate system anticlockwise (positive) around the y axis by 90 minus
                     // the (positive)observatory latitude. The vector itself is rotated clockwise
                     RotatedTDV.RotateAroundY(90.0 - Position.lat);
-                    AltitudeAzimuthFromTelescopeDirectionVector(RotatedTDV, AltAz);
+                    AltitudeAzimuthFromMountDirectionVector(RotatedTDV, AltAz);
                     break;
 
                 case SOUTH_CELESTIAL_POLE:
@@ -400,7 +400,7 @@ bool ScopeSim::ReadScopeStatus()
                     // Rotate the TDV coordinate system clockwise (negative) around the y axis by 90 plus
                     // the (negative)observatory latitude. The vector itself is rotated anticlockwise
                     RotatedTDV.RotateAroundY(-90.0 - Position.lat);
-                    AltitudeAzimuthFromTelescopeDirectionVector(RotatedTDV, AltAz);
+                    AltitudeAzimuthFromMountDirectionVector(RotatedTDV, AltAz);
                     break;
             }
             ln_get_equ_from_hrz(&AltAz, &Position, ln_get_julian_from_sys(), &EquatorialCoordinates);
@@ -411,7 +411,7 @@ bool ScopeSim::ReadScopeStatus()
                 DEBUG(DBG_SIMULATOR, "ReadScopeStatus - HavePosition false");
 
             // The best I can do is just do a direct conversion to RA/DEC
-            EquatorialCoordinatesFromTelescopeDirectionVector(TDV, EquatorialCoordinates);
+            EquatorialCoordinatesFromMountDirectionVector(TDV, EquatorialCoordinates);
         }
         // libnova works in decimal degrees
         RightAscension = EquatorialCoordinates.ra * 24.0 / 360.0;
@@ -437,7 +437,7 @@ bool ScopeSim::Sync(double ra, double dec)
     NewEntry.ObservationJulianDate = ln_get_julian_from_sys();
     NewEntry.RightAscension        = ra;
     NewEntry.Declination           = dec;
-    NewEntry.TelescopeDirection    = TelescopeDirectionVectorFromAltitudeAzimuth(AltAz);
+    NewEntry.MountDirection    = MountDirectionVectorFromAltitudeAzimuth(AltAz);
     NewEntry.PrivateDataSize       = 0;
 
     if (!CheckForDuplicateSyncPoint(NewEntry))
@@ -664,43 +664,43 @@ void ScopeSim::TimerHit()
         }
     }
 
-    INDI::Telescope::TimerHit(); // This will call ReadScopeStatus
+    INDI::Mount::TimerHit(); // This will call ReadScopeStatus
 
     // OK I have updated the celestial reference frame RA/DEC in ReadScopeStatus
     // Now handle the tracking state
     switch (TrackState)
     {
-        case SCOPE_SLEWING:
+        case MOUNT_SLEWING:
             if ((STOPPED == AxisStatusRA) && (STOPPED == AxisStatusDEC))
             {
                 if (ISS_ON == IUFindSwitch(&CoordSP, "TRACK")->s)
                 {
                     // Goto has finished start tracking
                     DEBUG(DBG_SIMULATOR, "TimerHit - Goto finished start tracking");
-                    TrackState = SCOPE_TRACKING;
+                    TrackState = MOUNT_TRACKING;
                     // Fall through to tracking case
                 }
                 else
                 {
-                    TrackState = SCOPE_IDLE;
+                    TrackState = MOUNT_IDLE;
                     break;
                 }
             }
             else
                 break;
 
-        case SCOPE_TRACKING:
+        case MOUNT_TRACKING:
         {
             // Continue or start tracking
             // Calculate where the mount needs to be in POLLMS time
             // POLLMS is hardcoded to be one second
             // TODO may need to make this longer to get a meaningful result
             double JulianOffset = 1.0 / (24.0 * 60 * 60);
-            TelescopeDirectionVector TDV;
+            MountDirectionVector TDV;
             ln_hrz_posn AltAz { 0, 0 };
 
-            if (TransformCelestialToTelescope(CurrentTrackingTarget.ra, CurrentTrackingTarget.dec, JulianOffset, TDV))
-                AltitudeAzimuthFromTelescopeDirectionVector(TDV, AltAz);
+            if (TransformCelestialToMount(CurrentTrackingTarget.ra, CurrentTrackingTarget.dec, JulianOffset, TDV))
+                AltitudeAzimuthFromMountDirectionVector(TDV, AltAz);
             else
             {
                 // Try a conversion with the stored observatory position if any
@@ -726,7 +726,7 @@ void ScopeSim::TimerHit()
                 else
                 {
                     // No sense in tracking in this case
-                    TrackState = SCOPE_IDLE;
+                    TrackState = MOUNT_IDLE;
                     break;
                 }
             }

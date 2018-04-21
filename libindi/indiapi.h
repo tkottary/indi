@@ -64,7 +64,7 @@ INDI is intended for developers seeking to add support for their devices in INDI
 <li><a href="classINDI_1_1BaseClient.html">INDI Client API</a></li>
 <li><a href="namespaceINDI.html">INDI Base Drivers</a>: Base classes for all INDI drivers. Current base drivers include:
  <ul>
-<li><a href="classINDI_1_1Telescope.html">Telescope</a></li>
+<li><a href="classINDI_1_1Mount.html">Mount</a></li>
 <li><a href="classINDI_1_1CCD.html">CCD</a></li>
 <li><a href="classINDI_1_1GuiderInterface.html">Guider</a></li>
 <li><a href="classINDI_1_1FilterWheel.html">Filter Wheel</a></li>
@@ -95,7 +95,7 @@ INDI Library includes a number of tutorials to illustrate development of INDI dr
 
 Simulators provide a great framework to test drivers and equipment alike. INDI Library provides the following simulators:
 <ul>
-<li><b>@ref ScopeSim "Telescope Simulator"</b>: Offers GOTO capability, motion control, guiding, and ability to set Periodic Error (PE) which is read by the CCD simulator when generating images.</li>
+<li><b>@ref ScopeSim "Mount Simulator"</b>: Offers GOTO capability, motion control, guiding, and ability to set Periodic Error (PE) which is read by the CCD simulator when generating images.</li>
 <li><b>@ref CCDSim "CCD Simulator"</b>: Offers a very flexible CCD simulator with a primary CCD chip and a guide chip. The simulator generate images based on the RA & DEC coordinates it
  snoops from the telescope driver using General Star Catalog (GSC). Please note that you must install GSC for the CCD simulator to work properly. Furthermore,
  The simulator snoops FWHM from the focuser simulator which affects the generated images focus. All images are generated in standard FITS format.</li>

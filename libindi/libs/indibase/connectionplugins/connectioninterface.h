@@ -45,7 +45,7 @@ namespace Connection
  *
  * @see Connection::Serial
  * @see Connection::TCP
- * @see INDI::Telescope utilizes both serial and tcp plugins to communicate with mounts.
+ * @see INDI::Mount utilizes both serial and tcp plugins to communicate with mounts.
  */
 class Interface
 {
@@ -93,7 +93,7 @@ class Interface
     /**
      * @brief registerHandshake Register a handshake function to be called once the intial connection to the device is established.
      * @param callback Handshake function callback
-     * @see INDI::Telescope
+     * @see INDI::Mount
      */
     void registerHandshake(std::function<bool()> callback);
 

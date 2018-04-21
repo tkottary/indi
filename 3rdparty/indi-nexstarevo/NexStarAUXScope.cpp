@@ -1,7 +1,7 @@
 
 #include "NexStarAUXScope.h"
 
-#include <inditelescope.h>
+#include <indimount.h>
 
 #include <algorithm>
 #include <math.h>

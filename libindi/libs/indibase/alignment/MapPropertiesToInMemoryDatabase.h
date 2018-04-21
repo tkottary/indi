@@ -10,7 +10,7 @@
 
 #include "InMemoryDatabase.h"
 
-#include "inditelescope.h"
+#include "indimount.h"
 
 namespace INDI
 {
@@ -77,12 +77,12 @@ class MapPropertiesToInMemoryDatabase : public InMemoryDatabase
 
     /// \brief Initialize alignment database properties. It is recommended to call this function within initProperties()
     /// of your primary device
-    /// \param[in] pTelescope Pointer to the child INDI::Telecope class
-    void InitProperties(Telescope *pTelescope);
+    /// \param[in] pMount Pointer to the child INDI::Telecope class
+    void InitProperties(Mount *pMount);
 
     /// \brief Call this function from within the ISNewBLOB processing path. The function will
     /// handle any alignment database related properties.
-    /// \param[in] pTelescope Pointer to the child INDI::Telecope class
+    /// \param[in] pMount Pointer to the child INDI::Telecope class
     /// \param[in] name vector property name
     /// \param[in] sizes
     /// \param[in] blobsizes
@@ -90,26 +90,26 @@ class MapPropertiesToInMemoryDatabase : public InMemoryDatabase
     /// \param[in] formats
     /// \param[in] names
     /// \param[in] n
-    void ProcessBlobProperties(Telescope *pTelescope, const char *name, int sizes[], int blobsizes[], char *blobs[],
+    void ProcessBlobProperties(Mount *pMount, const char *name, int sizes[], int blobsizes[], char *blobs[],
                                char *formats[], char *names[], int n);
 
     /// \brief Call this function from within the ISNewNumber processing path. The function will
     /// handle any alignment database related properties.
-    /// \param[in] pTelescope Pointer to the child INDI::Telecope class
+    /// \param[in] pMount Pointer to the child INDI::Telecope class
     /// \param[in] name vector property name
     /// \param[in] values value as passed by the client
     /// \param[in] names names as passed by the client
     /// \param[in] n number of values and names pair to process.
-    void ProcessNumberProperties(Telescope *pTelescope, const char *name, double values[], char *names[], int n);
+    void ProcessNumberProperties(Mount *pMount, const char *name, double values[], char *names[], int n);
 
     /// \brief Call this function from within the ISNewSwitch processing path. The function will
     /// handle any alignment database related properties.
-    /// \param[in] pTelescope Pointer to the child INDI::Telecope class
+    /// \param[in] pMount Pointer to the child INDI::Telecope class
     /// \param[in] name vector property name
     /// \param[in] states states as passed by the client
     /// \param[in] names names as passed by the client
     /// \param[in] n number of values and names pair to process.
-    void ProcessSwitchProperties(Telescope *pTelescope, const char *name, ISState *states, char *names[], int n);
+    void ProcessSwitchProperties(Mount *pMount, const char *name, ISState *states, char *names[], int n);
 
     /// \brief Call this function from within the updateLocation processing path
     /// \param[in] latitude Site latitude in degrees.

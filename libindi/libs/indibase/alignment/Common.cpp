@@ -15,7 +15,7 @@ namespace INDI
 {
 namespace AlignmentSubsystem
 {
-void TelescopeDirectionVector::RotateAroundY(double Angle)
+void MountDirectionVector::RotateAroundY(double Angle)
 {
     Angle                       = Angle * M_PI / 180.0;
     gsl_vector *pGSLInputVector = gsl_vector_alloc(3);

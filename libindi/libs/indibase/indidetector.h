@@ -480,11 +480,11 @@ class Detector : public DefaultDevice
         UPLOAD_PREFIX
     };
 
-    ISwitch TelescopeTypeS[2];
-    ISwitchVectorProperty TelescopeTypeSP;
+    ISwitch MountTypeS[2];
+    ISwitchVectorProperty MountTypeSP;
     enum
     {
-        TELESCOPE_PRIMARY
+        MOUNT_PRIMARY
     };
 
     // FITS Header

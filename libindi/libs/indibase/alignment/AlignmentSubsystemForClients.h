@@ -13,7 +13,7 @@
 
 #include "ClientAPIForAlignmentDatabase.h"
 #include "ClientAPIForMathPluginManagement.h"
-#include "TelescopeDirectionVectorSupportFunctions.h"
+#include "MountDirectionVectorSupportFunctions.h"
 
 #include "basedevice.h"
 
@@ -28,7 +28,7 @@ namespace AlignmentSubsystem
  */
 class AlignmentSubsystemForClients : public ClientAPIForMathPluginManagement,
                                      public ClientAPIForAlignmentDatabase,
-                                     public TelescopeDirectionVectorSupportFunctions
+                                     public MountDirectionVectorSupportFunctions
 {
   public:
     /// \brief Virtual destructor

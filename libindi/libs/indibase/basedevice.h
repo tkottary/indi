@@ -62,7 +62,7 @@ class BaseDevice
     enum DRIVER_INTERFACE
     {
         GENERAL_INTERFACE   = 0,         /**< Default interface for all INDI devices */
-        TELESCOPE_INTERFACE = (1 << 0),  /**< Telescope interface, must subclass INDI::Telescope */
+        MOUNT_INTERFACE = (1 << 0),  /**< Mount interface, must subclass INDI::Mount */
         CCD_INTERFACE       = (1 << 1),  /**< CCD interface, must subclass INDI::CCD */
         GUIDER_INTERFACE    = (1 << 2),  /**< Guider interface, must subclass INDI::GuiderInterface */
         FOCUSER_INTERFACE   = (1 << 3),  /**< Focuser interface, must subclass INDI::FocuserInterface */

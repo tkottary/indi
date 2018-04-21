@@ -143,7 +143,7 @@ bool WatchDog::initProperties()
     IUFillSwitchVector(&ShutdownProcedureSP, ShutdownProcedureS, 3, getDeviceName(), "WATCHDOG_SHUTDOWN", "Shutdown",
                        MAIN_CONTROL_TAB, IP_RW, ISR_NOFMANY, 60, IPS_IDLE);
 
-    IUFillText(&ActiveDeviceT[ACTIVE_TELESCOPE], "ACTIVE_TELESCOPE", "Telescope", "Telescope Simulator");
+    IUFillText(&ActiveDeviceT[ACTIVE_TELESCOPE], "ACTIVE_TELESCOPE", "Mount", "Mount Simulator");
     IUFillText(&ActiveDeviceT[ACTIVE_DOME], "ACTIVE_DOME", "Dome", "Dome Simulator");
     IUFillTextVector(&ActiveDeviceTP, ActiveDeviceT, 2, getDeviceName(), "ACTIVE_DEVICES", "Active devices",
                      OPTIONS_TAB, IP_RW, 60, IPS_IDLE);
@@ -167,7 +167,7 @@ void WatchDog::ISGetProperties(const char *dev)
     if (watchDogTimer == -1)
         loadConfig(true);
 
-    //watchdogClient->setTelescope(ActiveDeviceT[0].text);
+    //watchdogClient->setMount(ActiveDeviceT[0].text);
     //watchdogClient->setDome(ActiveDeviceT[1].text);
 }
 
@@ -198,7 +198,7 @@ bool WatchDog::ISNewText(const char *dev, const char *name, char *texts[], char 
             ActiveDeviceTP.s = IPS_OK;
             IDSetText(&ActiveDeviceTP, nullptr);
 
-            //watchdogClient->setTelescope(ActiveDeviceT[0].text);
+            //watchdogClient->setMount(ActiveDeviceT[0].text);
             //watchdogClient->setDome(ActiveDeviceT[1].text);
 
             return true;

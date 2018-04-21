@@ -38,7 +38,7 @@ typedef struct ser_header
     uint32_t FrameCount;
     char Observer[40];
     char Instrume[40];
-    char Telescope[40];
+    char Mount[40];
     uint64_t DateTime;
     uint64_t DateTime_UTC;
 } ser_header;

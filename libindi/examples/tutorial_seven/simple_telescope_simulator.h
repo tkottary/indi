@@ -5,10 +5,10 @@
 #include "indimount.h"
 #include "alignment/AlignmentSubsystemForDrivers.h"
 
-class ScopeSim : public INDI::Mount, public INDI::AlignmentSubsystem::AlignmentSubsystemForDrivers
+class MountSim : public INDI::Mount, public INDI::AlignmentSubsystem::AlignmentSubsystemForDrivers
 {
   public:
-    ScopeSim();
+    MountSim();
 
 private:
     virtual bool Abort() override;

@@ -19,8 +19,8 @@
 
 using namespace INDI::AlignmentSubsystem;
 
-// We declare an auto pointer to ScopeSim.
-std::unique_ptr<ScopeSim> telescope_sim(new ScopeSim());
+// We declare an auto pointer to MountSim.
+std::unique_ptr<MountSim> telescope_sim(new MountSim());
 
 void ISGetProperties(const char *dev)
 {
@@ -53,12 +53,12 @@ void ISSnoopDevice(XMLEle *root)
     INDI_UNUSED(root);
 }
 
-ScopeSim::ScopeSim() :
+MountSim::MountSim() :
     DBG_SIMULATOR(INDI::Logger::getInstance().addDebugLevel("Simulator Verbose", "SIMULATOR"))
 {
 }
 
-bool ScopeSim::Abort()
+bool MountSim::Abort()
 {
     if (MovementNSSP.s == IPS_BUSY)
     {
@@ -92,28 +92,28 @@ bool ScopeSim::Abort()
     return true;
 }
 
-bool ScopeSim::canSync()
+bool MountSim::canSync()
 {
     return true;
 }
 
-bool ScopeSim::Connect()
+bool MountSim::Connect()
 {
     SetTimer(POLLMS);
     return true;
 }
 
-bool ScopeSim::Disconnect()
+bool MountSim::Disconnect()
 {
     return true;
 }
 
-const char *ScopeSim::getDefaultName()
+const char *MountSim::getDefaultName()
 {
     return (const char *)"Simple Mount Simulator";
 }
 
-bool ScopeSim::Goto(double ra, double dec)
+bool MountSim::Goto(double ra, double dec)
 {
     DEBUGF(DBG_SIMULATOR, "Goto - Celestial reference frame target right ascension %lf(%lf) declination %lf",
            ra * 360.0 / 24.0, ra, dec);
@@ -247,16 +247,10 @@ bool ScopeSim::Goto(double ra, double dec)
     return true;
 }
 
-bool ScopeSim::initProperties()
+bool MountSim::initProperties()
 {
     /* Make sure to init parent properties first */
     INDI::Mount::initProperties();
-
-    // Let's simulate it to be an F/10 8" telescope
-    ScopeParametersN[0].value = 203;
-    ScopeParametersN[1].value = 2000;
-    ScopeParametersN[2].value = 203;
-    ScopeParametersN[3].value = 2000;
 
     TrackState = MOUNT_IDLE;
 
@@ -269,7 +263,7 @@ bool ScopeSim::initProperties()
     return true;
 }
 
-bool ScopeSim::ISNewBLOB(const char *dev, const char *name, int sizes[], int blobsizes[], char *blobs[],
+bool MountSim::ISNewBLOB(const char *dev, const char *name, int sizes[], int blobsizes[], char *blobs[],
                          char *formats[], char *names[], int n)
 {
     if (dev != nullptr && strcmp(dev, getDeviceName()) == 0)
@@ -281,7 +275,7 @@ bool ScopeSim::ISNewBLOB(const char *dev, const char *name, int sizes[], int blo
     return INDI::Mount::ISNewBLOB(dev, name, sizes, blobsizes, blobs, formats, names, n);
 }
 
-bool ScopeSim::ISNewNumber(const char *dev, const char *name, double values[], char *names[], int n)
+bool MountSim::ISNewNumber(const char *dev, const char *name, double values[], char *names[], int n)
 {
     //  first check if it's for our device
 
@@ -296,7 +290,7 @@ bool ScopeSim::ISNewNumber(const char *dev, const char *name, double values[], c
     return INDI::Mount::ISNewNumber(dev, name, values, names, n);
 }
 
-bool ScopeSim::ISNewSwitch(const char *dev, const char *name, ISState *states, char *names[], int n)
+bool MountSim::ISNewSwitch(const char *dev, const char *name, ISState *states, char *names[], int n)
 {
     if (dev != nullptr && strcmp(dev, getDeviceName()) == 0)
     {
@@ -308,7 +302,7 @@ bool ScopeSim::ISNewSwitch(const char *dev, const char *name, ISState *states, c
     return INDI::Mount::ISNewSwitch(dev, name, states, names, n);
 }
 
-bool ScopeSim::ISNewText(const char *dev, const char *name, char *texts[], char *names[], int n)
+bool MountSim::ISNewText(const char *dev, const char *name, char *texts[], char *names[], int n)
 {
     if (dev != nullptr && strcmp(dev, getDeviceName()) == 0)
     {
@@ -319,7 +313,7 @@ bool ScopeSim::ISNewText(const char *dev, const char *name, char *texts[], char 
     return INDI::Mount::ISNewText(dev, name, texts, names, n);
 }
 
-bool ScopeSim::MoveNS(INDI_DIR_NS dir, MountMotionCommand command)
+bool MountSim::MoveNS(INDI_DIR_NS dir, MountMotionCommand command)
 {
     AxisDirection axisDir = (dir == DIRECTION_NORTH) ? FORWARD : REVERSE;
     AxisStatus axisStat   = (command == MOTION_START) ? SLEWING : STOPPED;
@@ -331,7 +325,7 @@ bool ScopeSim::MoveNS(INDI_DIR_NS dir, MountMotionCommand command)
     return true;
 }
 
-bool ScopeSim::MoveWE(INDI_DIR_WE dir, MountMotionCommand command)
+bool MountSim::MoveWE(INDI_DIR_WE dir, MountMotionCommand command)
 {
     AxisDirection axisDir = (dir == DIRECTION_WEST) ? FORWARD : REVERSE;
     AxisStatus axisStat   = (command == MOTION_START) ? SLEWING : STOPPED;
@@ -343,7 +337,7 @@ bool ScopeSim::MoveWE(INDI_DIR_WE dir, MountMotionCommand command)
     return true;
 }
 
-bool ScopeSim::ReadScopeStatus()
+bool MountSim::ReadScopeStatus()
 {
     ln_hrz_posn AltAz { 0, 0 };
 
@@ -426,7 +420,7 @@ bool ScopeSim::ReadScopeStatus()
     return true;
 }
 
-bool ScopeSim::Sync(double ra, double dec)
+bool MountSim::Sync(double ra, double dec)
 {
     ln_hrz_posn AltAz { 0, 0 };
     AlignmentDatabaseEntry NewEntry;
@@ -455,7 +449,7 @@ bool ScopeSim::Sync(double ra, double dec)
     return false;
 }
 
-void ScopeSim::TimerHit()
+void MountSim::TimerHit()
 {
     TraceThisTickCount++;
     if (60 == TraceThisTickCount)
@@ -834,7 +828,7 @@ void ScopeSim::TimerHit()
     TraceThisTick = false;
 }
 
-bool ScopeSim::updateLocation(double latitude, double longitude, double elevation)
+bool MountSim::updateLocation(double latitude, double longitude, double elevation)
 {
     UpdateLocation(latitude, longitude, elevation);
     return true;

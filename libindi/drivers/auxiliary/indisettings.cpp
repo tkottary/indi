@@ -97,7 +97,7 @@ bool Settings::initProperties()
     IUFillText(&ActiveDeviceT[ACTIVE_GPS], "ACTIVE_GPS", "GPS", "GPS Simulator");
     IUFillText(&ActiveDeviceT[ACTIVE_MOUNT], "ACTIVE_MOUNT", "MOUNT", "Mount Simulator");
     IUFillTextVector(&ActiveDeviceTP, ActiveDeviceT, 2, getDeviceName(), "ACTIVE_DEVICES", "Snoop devices", OPTIONS_TAB,
-                     IP_RW, 60, IPS_IDLE);    
+                     IP_RW, 60, IPS_IDLE);
 
     IUFillText(&TimeT[0], "UTC", "UTC Time", nullptr);
     IUFillText(&TimeT[1], "OFFSET", "UTC Offset", nullptr);
@@ -107,7 +107,7 @@ bool Settings::initProperties()
     IUFillNumber(&LocationN[LOCATION_LONGITUDE], "LONG", "Lon (dd:mm:ss)", "%010.6m", 0, 360, 0, 0.0);
     IUFillNumber(&LocationN[LOCATION_ELEVATION], "ELEV", "Elevation (m)", "%g", -200, 10000, 0, 0);
     IUFillNumberVector(&LocationNP, LocationN, 3, getDeviceName(), "GEOGRAPHIC_COORD", "Scope Location", SITE_TAB,
-                       IP_RW, 60, IPS_IDLE);    
+                       IP_RW, 60, IPS_IDLE);
 
     IUFillNumber(&ScopeParametersN[0], "SCOPE_APERTURE", "Aperture (mm)", "%g", 10, 5000, 0, 0.0);
     IUFillNumber(&ScopeParametersN[1], "SCOPE_FOCAL_LENGTH", "Focal Length (mm)", "%g", 10, 10000, 0, 0.0);
@@ -171,6 +171,13 @@ bool Settings::ISSnoopDevice(XMLEle *root)
 
     XMLEle *ep           = nullptr;
     const char *propName = findXMLAttValu(root, "name");
+    const char *deviceName = findXMLAttValu(root, "device");
+
+    // If GPS source is already registered, do not accept updates from other drivers
+    if (useGPSSource && strstr(deviceName, "GPS") == nullptr)
+        return false;
+
+    useGPSSource = (strstr(deviceName, "GPS") != nullptr);
 
     if (isConnected())
     {
@@ -240,7 +247,7 @@ bool Settings::saveConfigItems(FILE *fp)
             IUSaveConfigNumber(fp, &ScopeParametersNP);
         if (ScopeConfigNameTP.s == IPS_OK)
             IUSaveConfigText(fp, &ScopeConfigNameTP);
-    }    
+    }
     return true;
 }
 
@@ -383,86 +390,52 @@ bool Settings::processTimeInfo(const char *utc, const char *offset)
 
     utc_offset = atof(offset);
 
-    if (updateTime(&utc_date, utc_offset))
-    {
-        IUSaveText(&TimeT[0], utc);
-        IUSaveText(&TimeT[1], offset);
-        TimeTP.s = IPS_OK;
-        IDSetText(&TimeTP, nullptr);
+    IUSaveText(&TimeT[0], utc);
+    IUSaveText(&TimeT[1], offset);
+    TimeTP.s = IPS_OK;
+    IDSetText(&TimeTP, nullptr);
 
-        // 2018-04-20 JM: Update system time on ARM architecture.
-        #ifdef __arm__
-        #ifdef __linux__
-        struct tm utm;
-        if (strptime(utc, "%Y-%m-%dT%H:%M:%S", &utm))
-        {
-            time_t raw_time = mktime(&utm);
-            time_t now_time;
-            time(&now_time);
-            // Only sync if difference > 30 seconds
-            if (labs(now_time - raw_time) > 30)
-                stime(&raw_time);
-        }
-        #endif
-        #endif
-
-        return true;
-    }
-    else
+    // 2018-04-20 JM: Update system time on ARM architecture.
+#ifdef __arm__
+#ifdef __linux__
+    struct tm utm;
+    if (strptime(utc, "%Y-%m-%dT%H:%M:%S", &utm))
     {
-        TimeTP.s = IPS_ALERT;
-        IDSetText(&TimeTP, nullptr);
-        return false;
+        time_t raw_time = mktime(&utm);
+        time_t now_time;
+        time(&now_time);
+        // Only sync if difference > 30 seconds
+        if (labs(now_time - raw_time) > 30)
+            stime(&raw_time);
     }
+#endif
+#endif
+
+    return true;
 }
 
 bool Settings::processLocationInfo(double latitude, double longitude, double elevation)
 {
     // Do not update if not necessary
     if (latitude == LocationN[LOCATION_LATITUDE].value && longitude == LocationN[LOCATION_LONGITUDE].value &&
-        elevation == LocationN[LOCATION_ELEVATION].value)
+            elevation == LocationN[LOCATION_ELEVATION].value)
     {
         LocationNP.s = IPS_OK;
         IDSetNumber(&LocationNP, nullptr);
     }
 
-    if (updateLocation(latitude, longitude, elevation))
-    {
-        LocationNP.s                        = IPS_OK;
-        LocationN[LOCATION_LATITUDE].value  = latitude;
-        LocationN[LOCATION_LONGITUDE].value = longitude;
-        LocationN[LOCATION_ELEVATION].value = elevation;
-        //  Update client display
-        IDSetNumber(&LocationNP, nullptr);
+    LocationNP.s                        = IPS_OK;
+    LocationN[LOCATION_LATITUDE].value  = latitude;
+    LocationN[LOCATION_LONGITUDE].value = longitude;
+    LocationN[LOCATION_ELEVATION].value = elevation;
+    //  Update client display
+    IDSetNumber(&LocationNP, nullptr);
 
-        // Always save geographic coord config immediately.
-        saveConfig(true, "GEOGRAPHIC_COORD");
+    // Always save geographic coord config immediately.
+    saveConfig(true, "GEOGRAPHIC_COORD");
 
-        return true;
-    }
-    else
-    {
-        LocationNP.s = IPS_ALERT;
-        //  Update client display
-        IDSetNumber(&LocationNP, nullptr);
-
-        return false;
-    }
-}
-
-bool Settings::updateTime(ln_date *utc, double utc_offset)
-{
-    INDI_UNUSED(utc);
-    INDI_UNUSED(utc_offset);
     return true;
-}
 
-bool Settings::updateLocation(double latitude, double longitude, double elevation)
-{
-    INDI_UNUSED(latitude);
-    INDI_UNUSED(longitude);
-    INDI_UNUSED(elevation);
-    return true;
 }
 
 bool Settings::LoadScopeConfig()
@@ -688,7 +661,7 @@ bool Settings::UpdateScopeConfig()
         GScopeAp = IUFindNumber(&ScopeParametersNP, "GUIDER_APERTURE")->value;
     }
     if (IUFindText(&ScopeConfigNameTP, "SCOPE_CONFIG_NAME") &&
-        IUFindText(&ScopeConfigNameTP, "SCOPE_CONFIG_NAME")->text)
+            IUFindText(&ScopeConfigNameTP, "SCOPE_CONFIG_NAME")->text)
     {
         ConfigName = IUFindText(&ScopeConfigNameTP, "SCOPE_CONFIG_NAME")->text;
     }

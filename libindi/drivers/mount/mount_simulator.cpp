@@ -145,12 +145,6 @@ bool ScopeSim::initProperties()
     AddTrackMode("TRACK_SIDEREAL", "Sidereal", true);
     AddTrackMode("TRACK_CUSTOM", "Custom");
 
-    // Let's simulate it to be an F/7.5 120mm telescope
-    ScopeParametersN[0].value = 120;
-    ScopeParametersN[1].value = 900;
-    ScopeParametersN[2].value = 120;
-    ScopeParametersN[3].value = 900;
-
     TrackState = MOUNT_IDLE;
 
     SetParkDataType(PARK_RA_DEC);

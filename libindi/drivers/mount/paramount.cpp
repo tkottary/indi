@@ -164,12 +164,6 @@ bool Paramount::initProperties()
                        MAIN_CONTROL_TAB, IP_RW, 60, IPS_IDLE);
 #endif
 
-    // Let's simulate it to be an F/7.5 120mm telescope with 50m 175mm guide scope
-    ScopeParametersN[0].value = 120;
-    ScopeParametersN[1].value = 900;
-    ScopeParametersN[2].value = 50;
-    ScopeParametersN[3].value = 175;
-
     TrackState = MOUNT_IDLE;
 
     SetParkDataType(PARK_RA_DEC);

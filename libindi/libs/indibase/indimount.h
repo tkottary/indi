@@ -555,42 +555,11 @@ class Mount : public DefaultDevice
     void processButton(const char *button_n, ISState state);
 
     /**
-     * @brief Load scope settings from XML files.
-     * @return True if all config values were loaded otherwise false.
-     */
-    bool LoadScopeConfig();
-
-    /**
-     * @brief Load scope settings from XML files.
-     * @return True if Config #1 exists otherwise false.
-     */
-    bool HasDefaultScopeConfig();
-
-    /**
-     * \brief Save scope settings to XML files.
-     */
-    bool UpdateScopeConfig();
-
-    /**
      * @brief Validate a file name
      * @param file_name File name
      * @return True if the file name is valid otherwise false.
      */
     std::string GetHomeDirectory() const;
-
-    /**
-     * @brief Get the scope config index
-     * @return The scope config index
-     */
-    int GetScopeConfigIndex() const;
-
-    /**
-     * @brief Check if a file exists and it is readable
-     * @param file_name File name
-     * @param writable Additional check if the file is writable
-     * @return True if the checks are successful otherwise false.
-     */
-    bool CheckFile(const std::string &file_name, bool writable) const;
 
     /**
      * This is a variable filled in by the ReadStatus mount
@@ -649,10 +618,6 @@ class Mount : public DefaultDevice
     ISwitchVectorProperty SlewRateSP;
     ISwitch *SlewRateS;
 
-    // Mount & guider aperture and focal length
-    INumber ScopeParametersN[4];
-    INumberVectorProperty ScopeParametersNP;
-
     // UTC and UTC Offset
     IText TimeT[2] {};
     ITextVectorProperty TimeTP;
@@ -707,36 +672,6 @@ class Mount : public DefaultDevice
     int PortFD                           = -1;
     Connection::Serial *serialConnection = NULL;
     Connection::TCP *tcpConnection       = NULL;
-
-  // XML node names for scope config
-  const std::string ScopeConfigRootXmlNode { "scopeconfig" };
-  const std::string ScopeConfigDeviceXmlNode { "device" };
-  const std::string ScopeConfigNameXmlNode { "name" };
-  const std::string ScopeConfigScopeFocXmlNode { "scopefoc" };
-  const std::string ScopeConfigScopeApXmlNode { "scopeap" };
-  const std::string ScopeConfigGScopeFocXmlNode { "gscopefoc" };
-  const std::string ScopeConfigGScopeApXmlNode { "gscopeap" };
-  const std::string ScopeConfigLabelApXmlNode { "label" };
-
-  // A switch to apply custom aperture/focal length config
-    enum
-    {
-        MOUNT_CONFIG1,
-        MOUNT_CONFIG2,
-        MOUNT_CONFIG3,
-        MOUNT_CONFIG4,
-        MOUNT_CONFIG5,
-        MOUNT_CONFIG6
-    };
-    ISwitch ScopeConfigs[6];
-    ISwitchVectorProperty ScopeConfigsSP;
-
-    // Scope config name
-    ITextVectorProperty ScopeConfigNameTP;
-    IText ScopeConfigNameT[1] {};
-
-    /// The mount/guide scope configuration file name
-    const std::string ScopeConfigFileName;
 
 private:
     bool processTimeInfo(const char *utc, const char *offset);

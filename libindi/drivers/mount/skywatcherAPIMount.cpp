@@ -581,6 +581,7 @@ bool SkywatcherAPIMount::ISNewText(const char *dev, const char *name, char *text
     // Pass it up the chain
     bool Ret =  INDI::Mount::ISNewText(dev, name, texts, names, n);
 
+#if 0
     // The scope config switch must be updated after the config is saved to disk
     if (dev != nullptr && strcmp(dev, getDeviceName()) == 0)
     {
@@ -589,9 +590,11 @@ bool SkywatcherAPIMount::ISNewText(const char *dev, const char *name, char *text
             UpdateScopeConfigSwitch();
         }
     }
+#endif
     return Ret;
 }
 
+#if 0
 void SkywatcherAPIMount::UpdateScopeConfigSwitch()
 {
     if (!CheckFile(ScopeConfigFileName, false))
@@ -692,6 +695,7 @@ void SkywatcherAPIMount::UpdateScopeConfigSwitch()
     deleteProperty(ScopeConfigsSP.name);
     defineSwitch(&ScopeConfigsSP);
 }
+#endif
 
 double SkywatcherAPIMount::GetSlewRate()
 {

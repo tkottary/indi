@@ -37,8 +37,7 @@ namespace INDI
 {
 
 Mount::Mount()
-    : DefaultDevice(), ScopeConfigFileName(GetHomeDirectory() + "/.indi/ScopeConfig.xml"),
-      ParkDataFileName(GetHomeDirectory() + "/.indi/ParkData.xml")
+    : DefaultDevice(), ParkDataFileName(GetHomeDirectory() + "/.indi/ParkData.xml")
 {
     capability     = 0;
     last_we_motion = last_ns_motion = -1;
@@ -74,7 +73,7 @@ bool Mount::initProperties()
     DefaultDevice::initProperties();
 
     // Active Devices
-    IUFillText(&ActiveDeviceT[0], "ACTIVE_GPS", "GPS", "GPS Simulator");
+    IUFillText(&ActiveDeviceT[0], "ACTIVE_SETTINGS", "SETTINGS", "INDI Settings");
     IUFillText(&ActiveDeviceT[1], "ACTIVE_DOME", "DOME", "Dome Simulator");
     IUFillTextVector(&ActiveDeviceTP, ActiveDeviceT, 2, getDeviceName(), "ACTIVE_DEVICES", "Snoop devices", OPTIONS_TAB,
                      IP_RW, 60, IPS_IDLE);
@@ -106,12 +105,12 @@ bool Mount::initProperties()
 
     IUFillText(&TimeT[0], "UTC", "UTC Time", nullptr);
     IUFillText(&TimeT[1], "OFFSET", "UTC Offset", nullptr);
-    IUFillTextVector(&TimeTP, TimeT, 2, getDeviceName(), "TIME_UTC", "UTC", SITE_TAB, IP_RW, 60, IPS_IDLE);
+    IUFillTextVector(&TimeTP, TimeT, 2, getDeviceName(), "PRIVATE_TIME_UTC", "UTC", SITE_TAB, IP_RW, 60, IPS_IDLE);
 
     IUFillNumber(&LocationN[LOCATION_LATITUDE], "LAT", "Lat (dd:mm:ss)", "%010.6m", -90, 90, 0, 0.0);
     IUFillNumber(&LocationN[LOCATION_LONGITUDE], "LONG", "Lon (dd:mm:ss)", "%010.6m", 0, 360, 0, 0.0);
     IUFillNumber(&LocationN[LOCATION_ELEVATION], "ELEV", "Elevation (m)", "%g", -200, 10000, 0, 0);
-    IUFillNumberVector(&LocationNP, LocationN, 3, getDeviceName(), "GEOGRAPHIC_COORD", "Scope Location", SITE_TAB,
+    IUFillNumberVector(&LocationNP, LocationN, 3, getDeviceName(), "PRIVATE_GEOGRAPHIC_COORD", "Scope Location", SITE_TAB,
                        IP_RW, 60, IPS_IDLE);
 
     // Pier Side
@@ -185,28 +184,6 @@ bool Mount::initProperties()
     IUFillSwitchVector(&MovementWESP, MovementWES, 2, getDeviceName(), "MOUNT_MOTION_WE", "Motion W/E", MOTION_TAB,
                        IP_RW, ISR_ATMOST1, 60, IPS_IDLE);
 
-    IUFillNumber(&ScopeParametersN[0], "MOUNT_APERTURE", "Aperture (mm)", "%g", 10, 5000, 0, 0.0);
-    IUFillNumber(&ScopeParametersN[1], "MOUNT_FOCAL_LENGTH", "Focal Length (mm)", "%g", 10, 10000, 0, 0.0);
-    IUFillNumber(&ScopeParametersN[2], "GUIDER_APERTURE", "Guider Aperture (mm)", "%g", 10, 5000, 0, 0.0);
-    IUFillNumber(&ScopeParametersN[3], "GUIDER_FOCAL_LENGTH", "Guider Focal Length (mm)", "%g", 10, 10000, 0, 0.0);
-    IUFillNumberVector(&ScopeParametersNP, ScopeParametersN, 4, getDeviceName(), "MOUNT_INFO", "Scope Properties",
-                       OPTIONS_TAB, IP_RW, 60, IPS_OK);
-
-    // Scope config name
-    IUFillText(&ScopeConfigNameT[0], "MOUNT_CONFIG_NAME", "Config Name", "");
-    IUFillTextVector(&ScopeConfigNameTP, ScopeConfigNameT, 1, getDeviceName(), "MOUNT_CONFIG_NAME", "Scope Name",
-                     OPTIONS_TAB, IP_RW, 60, IPS_OK);
-
-    // Switch for aperture/focal length configs
-    IUFillSwitch(&ScopeConfigs[MOUNT_CONFIG1], "MOUNT_CONFIG1", "Config #1", ISS_ON);
-    IUFillSwitch(&ScopeConfigs[MOUNT_CONFIG2], "MOUNT_CONFIG2", "Config #2", ISS_OFF);
-    IUFillSwitch(&ScopeConfigs[MOUNT_CONFIG3], "MOUNT_CONFIG3", "Config #3", ISS_OFF);
-    IUFillSwitch(&ScopeConfigs[MOUNT_CONFIG4], "MOUNT_CONFIG4", "Config #4", ISS_OFF);
-    IUFillSwitch(&ScopeConfigs[MOUNT_CONFIG5], "MOUNT_CONFIG5", "Config #5", ISS_OFF);
-    IUFillSwitch(&ScopeConfigs[MOUNT_CONFIG6], "MOUNT_CONFIG6", "Config #6", ISS_OFF);
-    IUFillSwitchVector(&ScopeConfigsSP, ScopeConfigs, 6, getDeviceName(), "APPLY_MOUNT_CONFIG", "Scope Configs",
-                       OPTIONS_TAB, IP_RW, ISR_1OFMANY, 60, IPS_OK);
-
     // Lock Axis
     IUFillSwitch(&LockAxisS[0], "LOCK_AXIS_1", "West/East", ISS_OFF);
     IUFillSwitch(&LockAxisS[1], "LOCK_AXIS_2", "North/South", ISS_OFF);
@@ -258,73 +235,6 @@ void Mount::ISGetProperties(const char *dev)
         defineSwitch(&DomeClosedLockTP);
         loadConfig(true, "DOME_POLICY");
     }
-
-    defineNumber(&ScopeParametersNP);
-    defineText(&ScopeConfigNameTP);
-
-    if (HasDefaultScopeConfig())
-    {
-        LoadScopeConfig();
-    }
-    else
-    {
-        loadConfig(true, "MOUNT_INFO");
-        loadConfig(true, "MOUNT_CONFIG_NAME");
-    }
-
-    /*
-    if (isConnected())
-    {
-        //  Now we add our telescope specific stuff
-
-        if (CanGOTO())
-            defineSwitch(&CoordSP);
-        defineNumber(&EqNP);
-        if (CanAbort())
-            defineSwitch(&AbortSP);
-        if (HasTrackMode() && TrackModeS != nullptr)
-            defineSwitch(&TrackModeSP);
-        if (CanControlTrack())
-            defineSwitch(&TrackStateSP);
-        if (HasTrackRate())
-            defineNumber(&TrackRateNP);
-
-
-        if (HasTime())
-            defineText(&TimeTP);
-        if (HasLocation())
-            defineNumber(&LocationNP);
-
-        if (CanPark())
-        {
-            defineSwitch(&ParkSP);
-            if (parkDataType != PARK_NONE)
-            {
-                defineNumber(&ParkPositionNP);
-                defineSwitch(&ParkOptionSP);
-            }
-        }
-
-        if (CanGOTO())
-        {
-            defineSwitch(&MovementNSSP);
-            defineSwitch(&MovementWESP);
-
-            if (nSlewRate >= 4)
-                defineSwitch(&SlewRateSP);
-
-            defineNumber(&TargetNP);
-        }
-
-        if (HasPierSide())
-            defineSwitch(&PierSideSP);
-
-        if (HasPECState())
-            defineSwitch(&PECStateSP);
-
-        defineSwitch(&ScopeConfigsSP);
-    }
-    */
 
     if (CanGOTO())
         controller->ISGetProperties(dev);
@@ -394,8 +304,6 @@ bool Mount::updateProperties()
         if (HasPECState())
             defineSwitch(&PECStateSP);
 
-        defineText(&ScopeConfigNameTP);
-        defineSwitch(&ScopeConfigsSP);
     }
     else
     {
@@ -441,8 +349,6 @@ bool Mount::updateProperties()
         if (HasPECState())
             deleteProperty(PECStateSP.name);
 
-        deleteProperty(ScopeConfigNameTP.name);
-        deleteProperty(ScopeConfigsSP.name);
     }
 
     if (CanGOTO())
@@ -589,13 +495,6 @@ bool Mount::saveConfigItems(FILE *fp)
     if (HasLocation())
         IUSaveConfigNumber(fp, &LocationNP);
 
-    if (!HasDefaultScopeConfig())
-    {
-        if (ScopeParametersNP.s == IPS_OK)
-            IUSaveConfigNumber(fp, &ScopeParametersNP);
-        if (ScopeConfigNameTP.s == IPS_OK)
-            IUSaveConfigText(fp, &ScopeConfigNameTP);
-    }
     if (SlewRateS != nullptr)
         IUSaveConfigSwitch(fp, &SlewRateSP);
     if (HasPECState())
@@ -719,14 +618,6 @@ bool Mount::ISNewText(const char *dev, const char *name, char *texts[], char *na
             return true;
         }
 
-        if (name && std::string(name) == "MOUNT_CONFIG_NAME")
-        {
-            ScopeConfigNameTP.s = IPS_OK;
-            IUUpdateText(&ScopeConfigNameTP, texts, names, n);
-            IDSetText(&ScopeConfigNameTP, nullptr);
-            UpdateScopeConfig();
-            return true;
-        }
     }
 
     controller->ISNewText(dev, name, texts, names, n);
@@ -837,19 +728,6 @@ bool Mount::ISNewNumber(const char *dev, const char *name, double values[], char
             double targetElev = values[elevationindex];
 
             return processLocationInfo(targetLat, targetLong, targetElev);
-        }
-
-        ///////////////////////////////////
-        // Mount Info
-        ///////////////////////////////////
-        if (strcmp(name, "MOUNT_INFO") == 0)
-        {
-            ScopeParametersNP.s = IPS_OK;
-
-            IUUpdateNumber(&ScopeParametersNP, values, names, n);
-            IDSetNumber(&ScopeParametersNP, nullptr);
-            UpdateScopeConfig();
-            return true;
         }
 
         ///////////////////////////////////
@@ -1414,18 +1292,6 @@ bool Mount::ISNewSwitch(const char *dev, const char *name, ISState *states, char
                 DEBUG(Logger::DBG_SESSION, "Joystick motion is locked to North/South axis only.");
             else
                 DEBUG(Logger::DBG_SESSION, "Joystick motion is unlocked.");
-            return true;
-        }
-
-        ///////////////////////////////////
-        // Scope Apply Config
-        ///////////////////////////////////
-        if (name && std::string(name) == "APPLY_MOUNT_CONFIG")
-        {
-            IUUpdateSwitch(&ScopeConfigsSP, states, names, n);
-            bool rc          = LoadScopeConfig();
-            ScopeConfigsSP.s = (rc ? IPS_OK : IPS_ALERT);
-            IDSetSwitch(&ScopeConfigsSP, nullptr);
             return true;
         }
     }
@@ -2260,388 +2126,6 @@ void Mount::setPECState(MountPECState state)
     }
 }
 
-bool Mount::LoadScopeConfig()
-{
-    if (!CheckFile(ScopeConfigFileName, false))
-    {
-        DEBUGF(Logger::DBG_SESSION, "Can't open XML file (%s) for read", ScopeConfigFileName.c_str());
-        return false;
-    }
-    LilXML *XmlHandle      = newLilXML();
-    FILE *FilePtr          = fopen(ScopeConfigFileName.c_str(), "r");
-    XMLEle *RootXmlNode    = nullptr;
-    XMLEle *CurrentXmlNode = nullptr;
-    XMLAtt *Ap             = nullptr;
-    bool DeviceFound       = false;
-    char ErrMsg[512];
-
-    RootXmlNode = readXMLFile(FilePtr, XmlHandle, ErrMsg);
-    delLilXML(XmlHandle);
-    XmlHandle = nullptr;
-    if (!RootXmlNode)
-    {
-        DEBUGF(Logger::DBG_SESSION, "Failed to parse XML file (%s): %s", ScopeConfigFileName.c_str(), ErrMsg);
-        return false;
-    }
-    if (std::string(tagXMLEle(RootXmlNode)) != ScopeConfigRootXmlNode)
-    {
-        DEBUGF(Logger::DBG_SESSION, "Not a scope config XML file (%s)", ScopeConfigFileName.c_str());
-        delXMLEle(RootXmlNode);
-        return false;
-    }
-    CurrentXmlNode = nextXMLEle(RootXmlNode, 1);
-    // Find the current telescope in the config file
-    while (CurrentXmlNode)
-    {
-        if (std::string(tagXMLEle(CurrentXmlNode)) != ScopeConfigDeviceXmlNode)
-        {
-            CurrentXmlNode = nextXMLEle(RootXmlNode, 0);
-            continue;
-        }
-        Ap = findXMLAtt(CurrentXmlNode, ScopeConfigNameXmlNode.c_str());
-        if (Ap && !strcmp(valuXMLAtt(Ap), getDeviceName()))
-        {
-            DeviceFound = true;
-            break;
-        }
-        CurrentXmlNode = nextXMLEle(RootXmlNode, 0);
-    }
-    if (!DeviceFound)
-    {
-        DEBUGF(Logger::DBG_SESSION, "No a scope config found for %s in the XML file (%s)", getDeviceName(),
-               ScopeConfigFileName.c_str());
-        delXMLEle(RootXmlNode);
-        return false;
-    }
-    // Read the values
-    XMLEle *XmlNode       = nullptr;
-    const int ConfigIndex = GetScopeConfigIndex();
-    double ScopeFoc = 0, ScopeAp = 0;
-    double GScopeFoc = 0, GScopeAp = 0;
-    std::string ConfigName;
-
-    CurrentXmlNode = findXMLEle(CurrentXmlNode, ("config" + std::to_string(ConfigIndex)).c_str());
-    if (!CurrentXmlNode)
-    {
-        DEBUGF(Logger::DBG_SESSION,
-               "Config %d is not found in the XML file (%s). To save a new config, update and set scope properties and "
-               "config name.",
-               ConfigIndex, ScopeConfigFileName.c_str());
-        delXMLEle(RootXmlNode);
-        return false;
-    }
-    XmlNode = findXMLEle(CurrentXmlNode, ScopeConfigScopeFocXmlNode.c_str());
-    if (!XmlNode || sscanf(pcdataXMLEle(XmlNode), "%lf", &ScopeFoc) != 1)
-    {
-        DEBUGF(Logger::DBG_SESSION, "Can't read the telescope focal length from the XML file (%s)",
-               ScopeConfigFileName.c_str());
-        delXMLEle(RootXmlNode);
-        return false;
-    }
-    XmlNode = findXMLEle(CurrentXmlNode, ScopeConfigScopeApXmlNode.c_str());
-    if (!XmlNode || sscanf(pcdataXMLEle(XmlNode), "%lf", &ScopeAp) != 1)
-    {
-        DEBUGF(Logger::DBG_SESSION, "Can't read the telescope aperture from the XML file (%s)",
-               ScopeConfigFileName.c_str());
-        delXMLEle(RootXmlNode);
-        return false;
-    }
-    XmlNode = findXMLEle(CurrentXmlNode, ScopeConfigGScopeFocXmlNode.c_str());
-    if (!XmlNode || sscanf(pcdataXMLEle(XmlNode), "%lf", &GScopeFoc) != 1)
-    {
-        DEBUGF(Logger::DBG_SESSION, "Can't read the guide scope focal length from the XML file (%s)",
-               ScopeConfigFileName.c_str());
-        delXMLEle(RootXmlNode);
-        return false;
-    }
-    XmlNode = findXMLEle(CurrentXmlNode, ScopeConfigGScopeApXmlNode.c_str());
-    if (!XmlNode || sscanf(pcdataXMLEle(XmlNode), "%lf", &GScopeAp) != 1)
-    {
-        DEBUGF(Logger::DBG_SESSION, "Can't read the guide scope aperture from the XML file (%s)",
-               ScopeConfigFileName.c_str());
-        delXMLEle(RootXmlNode);
-        return false;
-    }
-    XmlNode = findXMLEle(CurrentXmlNode, ScopeConfigLabelApXmlNode.c_str());
-    if (!XmlNode)
-    {
-        DEBUGF(Logger::DBG_SESSION, "Can't read the telescope config name from the XML file (%s)",
-               ScopeConfigFileName.c_str());
-        delXMLEle(RootXmlNode);
-        return false;
-    }
-    ConfigName = pcdataXMLEle(XmlNode);
-    // Store the loaded values
-    if (IUFindNumber(&ScopeParametersNP, "MOUNT_FOCAL_LENGTH"))
-    {
-        IUFindNumber(&ScopeParametersNP, "MOUNT_FOCAL_LENGTH")->value = ScopeFoc;
-    }
-    if (IUFindNumber(&ScopeParametersNP, "MOUNT_APERTURE"))
-    {
-        IUFindNumber(&ScopeParametersNP, "MOUNT_APERTURE")->value = ScopeAp;
-    }
-    if (IUFindNumber(&ScopeParametersNP, "GUIDER_FOCAL_LENGTH"))
-    {
-        IUFindNumber(&ScopeParametersNP, "GUIDER_FOCAL_LENGTH")->value = GScopeFoc;
-    }
-    if (IUFindNumber(&ScopeParametersNP, "GUIDER_APERTURE"))
-    {
-        IUFindNumber(&ScopeParametersNP, "GUIDER_APERTURE")->value = GScopeAp;
-    }
-    if (IUFindText(&ScopeConfigNameTP, "MOUNT_CONFIG_NAME"))
-    {
-        IUSaveText(IUFindText(&ScopeConfigNameTP, "MOUNT_CONFIG_NAME"), ConfigName.c_str());
-    }
-    ScopeParametersNP.s = IPS_OK;
-    IDSetNumber(&ScopeParametersNP, nullptr);
-    ScopeConfigNameTP.s = IPS_OK;
-    IDSetText(&ScopeConfigNameTP, nullptr);
-    delXMLEle(RootXmlNode);
-    return true;
-}
-
-bool Mount::HasDefaultScopeConfig()
-{
-    if (!CheckFile(ScopeConfigFileName, false))
-    {
-        return false;
-    }
-    LilXML *XmlHandle      = newLilXML();
-    FILE *FilePtr          = fopen(ScopeConfigFileName.c_str(), "r");
-    XMLEle *RootXmlNode    = nullptr;
-    XMLEle *CurrentXmlNode = nullptr;
-    XMLAtt *Ap             = nullptr;
-    bool DeviceFound       = false;
-    char ErrMsg[512];
-
-    RootXmlNode = readXMLFile(FilePtr, XmlHandle, ErrMsg);
-    delLilXML(XmlHandle);
-    XmlHandle = nullptr;
-    if (!RootXmlNode)
-    {
-        return false;
-    }
-    if (std::string(tagXMLEle(RootXmlNode)) != ScopeConfigRootXmlNode)
-    {
-        delXMLEle(RootXmlNode);
-        return false;
-    }
-    CurrentXmlNode = nextXMLEle(RootXmlNode, 1);
-    // Find the current telescope in the config file
-    while (CurrentXmlNode)
-    {
-        if (std::string(tagXMLEle(CurrentXmlNode)) != ScopeConfigDeviceXmlNode)
-        {
-            CurrentXmlNode = nextXMLEle(RootXmlNode, 0);
-            continue;
-        }
-        Ap = findXMLAtt(CurrentXmlNode, ScopeConfigNameXmlNode.c_str());
-        if (Ap && !strcmp(valuXMLAtt(Ap), getDeviceName()))
-        {
-            DeviceFound = true;
-            break;
-        }
-        CurrentXmlNode = nextXMLEle(RootXmlNode, 0);
-    }
-    if (!DeviceFound)
-    {
-        delXMLEle(RootXmlNode);
-        return false;
-    }
-    // Check the existence of Config #1 node
-    CurrentXmlNode = findXMLEle(CurrentXmlNode, "config1");
-    if (!CurrentXmlNode)
-    {
-        delXMLEle(RootXmlNode);
-        return false;
-    }
-    return true;
-}
-
-bool Mount::UpdateScopeConfig()
-{
-    // Get the config values from the UI
-    const int ConfigIndex = GetScopeConfigIndex();
-    double ScopeFoc = 0, ScopeAp = 0;
-    double GScopeFoc = 0, GScopeAp = 0;
-    std::string ConfigName;
-
-    if (IUFindNumber(&ScopeParametersNP, "MOUNT_FOCAL_LENGTH"))
-    {
-        ScopeFoc = IUFindNumber(&ScopeParametersNP, "MOUNT_FOCAL_LENGTH")->value;
-    }
-    if (IUFindNumber(&ScopeParametersNP, "MOUNT_APERTURE"))
-    {
-        ScopeAp = IUFindNumber(&ScopeParametersNP, "MOUNT_APERTURE")->value;
-    }
-    if (IUFindNumber(&ScopeParametersNP, "GUIDER_FOCAL_LENGTH"))
-    {
-        GScopeFoc = IUFindNumber(&ScopeParametersNP, "GUIDER_FOCAL_LENGTH")->value;
-    }
-    if (IUFindNumber(&ScopeParametersNP, "GUIDER_APERTURE"))
-    {
-        GScopeAp = IUFindNumber(&ScopeParametersNP, "GUIDER_APERTURE")->value;
-    }
-    if (IUFindText(&ScopeConfigNameTP, "MOUNT_CONFIG_NAME") &&
-        IUFindText(&ScopeConfigNameTP, "MOUNT_CONFIG_NAME")->text)
-    {
-        ConfigName = IUFindText(&ScopeConfigNameTP, "MOUNT_CONFIG_NAME")->text;
-    }
-    // Save the values to the actual XML file
-    if (!CheckFile(ScopeConfigFileName, true))
-    {
-        DEBUGF(Logger::DBG_SESSION, "Can't open XML file (%s) for write", ScopeConfigFileName.c_str());
-        return false;
-    }
-    // Open the existing XML file for write
-    LilXML *XmlHandle   = newLilXML();
-    FILE *FilePtr       = fopen(ScopeConfigFileName.c_str(), "r");
-    XMLEle *RootXmlNode = nullptr;
-    XMLAtt *Ap          = nullptr;
-    bool DeviceFound    = false;
-    char ErrMsg[512];
-
-    RootXmlNode = readXMLFile(FilePtr, XmlHandle, ErrMsg);
-    delLilXML(XmlHandle);
-    XmlHandle = nullptr;
-    fclose(FilePtr);
-
-    XMLEle *CurrentXmlNode = nullptr;
-    XMLEle *XmlNode        = nullptr;
-
-    if (!RootXmlNode || std::string(tagXMLEle(RootXmlNode)) != ScopeConfigRootXmlNode)
-    {
-        RootXmlNode = addXMLEle(nullptr, ScopeConfigRootXmlNode.c_str());
-    }
-    CurrentXmlNode = nextXMLEle(RootXmlNode, 1);
-    // Find the current telescope in the config file
-    while (CurrentXmlNode)
-    {
-        if (std::string(tagXMLEle(CurrentXmlNode)) != ScopeConfigDeviceXmlNode)
-        {
-            CurrentXmlNode = nextXMLEle(RootXmlNode, 0);
-            continue;
-        }
-        Ap = findXMLAtt(CurrentXmlNode, ScopeConfigNameXmlNode.c_str());
-        if (Ap && !strcmp(valuXMLAtt(Ap), getDeviceName()))
-        {
-            DeviceFound = true;
-            break;
-        }
-        CurrentXmlNode = nextXMLEle(RootXmlNode, 0);
-    }
-    if (!DeviceFound)
-    {
-        CurrentXmlNode = addXMLEle(RootXmlNode, ScopeConfigDeviceXmlNode.c_str());
-        addXMLAtt(CurrentXmlNode, ScopeConfigNameXmlNode.c_str(), getDeviceName());
-    }
-    // Add or update the config node
-    XmlNode = findXMLEle(CurrentXmlNode, ("config" + std::to_string(ConfigIndex)).c_str());
-    if (!XmlNode)
-    {
-        CurrentXmlNode = addXMLEle(CurrentXmlNode, ("config" + std::to_string(ConfigIndex)).c_str());
-    }
-    else
-    {
-        CurrentXmlNode = XmlNode;
-    }
-    // Add or update the telescope focal length
-    XmlNode = findXMLEle(CurrentXmlNode, ScopeConfigScopeFocXmlNode.c_str());
-    if (!XmlNode)
-    {
-        XmlNode = addXMLEle(CurrentXmlNode, ScopeConfigScopeFocXmlNode.c_str());
-    }
-    editXMLEle(XmlNode, std::to_string(ScopeFoc).c_str());
-    // Add or update the telescope focal aperture
-    XmlNode = findXMLEle(CurrentXmlNode, ScopeConfigScopeApXmlNode.c_str());
-    if (!XmlNode)
-    {
-        XmlNode = addXMLEle(CurrentXmlNode, ScopeConfigScopeApXmlNode.c_str());
-    }
-    editXMLEle(XmlNode, std::to_string(ScopeAp).c_str());
-    // Add or update the guide scope focal length
-    XmlNode = findXMLEle(CurrentXmlNode, ScopeConfigGScopeFocXmlNode.c_str());
-    if (!XmlNode)
-    {
-        XmlNode = addXMLEle(CurrentXmlNode, ScopeConfigGScopeFocXmlNode.c_str());
-    }
-    editXMLEle(XmlNode, std::to_string(GScopeFoc).c_str());
-    // Add or update the guide scope focal aperture
-    XmlNode = findXMLEle(CurrentXmlNode, ScopeConfigGScopeApXmlNode.c_str());
-    if (!XmlNode)
-    {
-        XmlNode = addXMLEle(CurrentXmlNode, ScopeConfigGScopeApXmlNode.c_str());
-    }
-    editXMLEle(XmlNode, std::to_string(GScopeAp).c_str());
-    // Add or update the config name
-    XmlNode = findXMLEle(CurrentXmlNode, ScopeConfigLabelApXmlNode.c_str());
-    if (!XmlNode)
-    {
-        XmlNode = addXMLEle(CurrentXmlNode, ScopeConfigLabelApXmlNode.c_str());
-    }
-    editXMLEle(XmlNode, ConfigName.c_str());
-    // Save the final content
-    FilePtr = fopen(ScopeConfigFileName.c_str(), "w");
-    prXMLEle(FilePtr, RootXmlNode, 0);
-    fclose(FilePtr);
-    delXMLEle(RootXmlNode);
-    return true;
-}
-
-std::string Mount::GetHomeDirectory() const
-{
-    // Check first the HOME environmental variable
-    const char *HomeDir = getenv("HOME");
-
-    // ...otherwise get the home directory of the current user.
-    if (!HomeDir)
-    {
-        HomeDir = getpwuid(getuid())->pw_dir;
-    }
-    return (HomeDir ? std::string(HomeDir) : "");
-}
-
-int Mount::GetScopeConfigIndex() const
-{
-    if (IUFindSwitch(&ScopeConfigsSP, "MOUNT_CONFIG1") && IUFindSwitch(&ScopeConfigsSP, "MOUNT_CONFIG1")->s == ISS_ON)
-    {
-        return 1;
-    }
-    if (IUFindSwitch(&ScopeConfigsSP, "MOUNT_CONFIG2") && IUFindSwitch(&ScopeConfigsSP, "MOUNT_CONFIG2")->s == ISS_ON)
-    {
-        return 2;
-    }
-    if (IUFindSwitch(&ScopeConfigsSP, "MOUNT_CONFIG3") && IUFindSwitch(&ScopeConfigsSP, "MOUNT_CONFIG3")->s == ISS_ON)
-    {
-        return 3;
-    }
-    if (IUFindSwitch(&ScopeConfigsSP, "MOUNT_CONFIG4") && IUFindSwitch(&ScopeConfigsSP, "MOUNT_CONFIG4")->s == ISS_ON)
-    {
-        return 4;
-    }
-    if (IUFindSwitch(&ScopeConfigsSP, "MOUNT_CONFIG5") && IUFindSwitch(&ScopeConfigsSP, "MOUNT_CONFIG5")->s == ISS_ON)
-    {
-        return 5;
-    }
-    if (IUFindSwitch(&ScopeConfigsSP, "MOUNT_CONFIG6") && IUFindSwitch(&ScopeConfigsSP, "MOUNT_CONFIG6")->s == ISS_ON)
-    {
-        return 6;
-    }
-    return 0;
-}
-
-bool Mount::CheckFile(const std::string &file_name, bool writable) const
-{
-    FILE *FilePtr = fopen(file_name.c_str(), (writable ? "a" : "r"));
-
-    if (FilePtr)
-    {
-        fclose(FilePtr);
-        return true;
-    }
-    return false;
-}
-
 void Mount::sendTimeFromSystem()
 {
     char ts[32]={0};
@@ -2660,5 +2144,19 @@ void Mount::sendTimeFromSystem()
 
     IDSetText(&TimeTP, nullptr);
 }
+
+std::string Mount::GetHomeDirectory() const
+{
+    // Check first the HOME environmental variable
+    const char *HomeDir = getenv("HOME");
+
+    // ...otherwise get the home directory of the current user.
+    if (!HomeDir)
+    {
+        HomeDir = getpwuid(getuid())->pw_dir;
+    }
+    return (HomeDir ? std::string(HomeDir) : "");
+}
+
 
 }

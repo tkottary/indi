@@ -50,28 +50,7 @@ class Settings : public DefaultDevice
     /** \brief Called to initialize basic properties required all the time */
     virtual bool initProperties();
 
-    virtual bool saveConfigItems(FILE *fp);
-
-    /**
-     * \brief Update time, date, and UTC offset.
-     * \param utc UTC time.
-     * \param utc_offset UTC offset in hours.
-     * \return True if successful, false otherwise
-     * \note If not implemented by the child class, this function by default returns false with a
-     * warning message.
-     */
-    virtual bool updateTime(ln_date *utc, double utc_offset);
-
-    /**
-     * \brief Update location settings
-     * \param latitude Site latitude in degrees.
-     * \param longitude Site latitude in degrees increasing eastward from Greenwich (0 to 360).
-     * \param elevation Site elevation in meters.
-     * \return True if successful, false otherwise
-     * \note If not implemented by the child class, this function by default returns false with a
-     * warning message.
-     */
-    virtual bool updateLocation(double latitude, double longitude, double elevation);
+    virtual bool saveConfigItems(FILE *fp);    
 
     /**
      * @brief Load scope settings from XML files.
@@ -174,6 +153,8 @@ private:
     bool processLocationInfo(double latitude, double longitude, double elevation);
 
     void triggerSnoop(const char *driverName, const char *propertyName);
+
+    bool useGPSSource { false};
 
 };
 

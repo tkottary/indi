@@ -1440,8 +1440,11 @@ void SkywatcherAltAzSimple::UpdateDetailedMountInformation(bool InformClient)
     if (MountCode == 161)
         IUSaveText(&BasicMountInfo[MOUNT_NAME], "Virtuoso");
     else
-    if (MountCode >= 160)
+    if (MountCode >= 160 && MountCode<=164)
         IUSaveText(&BasicMountInfo[MOUNT_NAME], "AllView Goto");
+    else
+    if (MountCode >= 165)
+        IUSaveText(&BasicMountInfo[MOUNT_NAME], "AZ-GTI Goto");
 
     bool AxisOneInfoHasChanged = false;
 

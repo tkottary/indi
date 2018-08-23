@@ -27,7 +27,7 @@
 
 int ttySkywatcherUdpFormat = 0;
 
-void tty_set_skywatcher_udp_format(int enabled)
+void SkywatcherAPI::tty_set_skywatcher_udp_format(int enabled)
 {
     ttySkywatcherUdpFormat = enabled;
 }
@@ -363,8 +363,8 @@ bool SkywatcherAPI:: InitMount(bool recover)
 {
      //add a check here for UDP connection
 
-        tty_set_skywatcher_udp_format(1);
-     MYDEBUG(DBG_SCOPE, "InitMount");
+        //tty_set_skywatcher_udp_format(1);
+        MYDEBUG(DBG_SCOPE, "InitMount");
 
 //    if (!CheckIfDCMotor())
 //        return false;
@@ -375,8 +375,8 @@ bool SkywatcherAPI:: InitMount(bool recover)
     MountCode = MCVersion & 0xFF;
 
     // Disable EQ mounts
-    if (MountCode < 0x80)
-        return false;
+//    if (MountCode < 0x80)
+//        return false;
 
     //// NOTE: Simulator settings, Mount dependent Settings
 
@@ -811,20 +811,10 @@ bool SkywatcherAPI::TalkWithAxis(AXISID Axis, char Command, std::string &cmdData
             int  errcode = 0;
             char errmsg[MAXRBUF];
             char response[16];
-
-
                 memset(response, 0, sizeof(response));
-
-                std::string SendBuffer;
-                SendBuffer.push_back(':');
-                SendBuffer.push_back(Command);
-                SendBuffer.push_back(Axis == AXIS1 ? '1' : '2');
-                SendBuffer.append(cmdDataStr);
-                SendBuffer.push_back('\r');
-
                 snprintf(cmd, 11, "%s",SendBuffer.c_str());
 
-                MYDEBUGF(DBG_SCOPE, "TalkWithAxis Fcomand is (%s)", cmd);
+                //MYDEBUGF(DBG_SCOPE, "TalkWithAxis Fcomand is (%s)", cmd);
 
 
                 tcflush(MyPortFD, TCIFLUSH);
@@ -832,7 +822,7 @@ bool SkywatcherAPI::TalkWithAxis(AXISID Axis, char Command, std::string &cmdData
                 if ((errcode = tty_write(MyPortFD, cmd, strlen(cmd), &nbytes_written)) != TTY_OK)
                 {
                     tty_error_msg(errcode, errmsg, MAXRBUF);
-                    MYDEBUGF(DBG_SCOPE, "TalkWithAxis Final Response (%s)", errmsg);
+                    //MYDEBUGF(DBG_SCOPE, "TalkWithAxis Final Response (%s)", errmsg);
                     return false;
                 }
 
@@ -841,7 +831,7 @@ bool SkywatcherAPI::TalkWithAxis(AXISID Axis, char Command, std::string &cmdData
 
             if (nbytes_read > 0)
             {
-                MYDEBUGF(DBG_SCOPE, "TalkWithAxis Final Response before trimming (%s)", response);
+                //MYDEBUGF(DBG_SCOPE, "TalkWithAxis Final Response before trimming (%s)", response);
                 tcflush(MyPortFD, TCIFLUSH);
 
                 responseStr = response;
@@ -853,7 +843,7 @@ bool SkywatcherAPI::TalkWithAxis(AXISID Axis, char Command, std::string &cmdData
                         responseStr.erase(0, 1);
                         responseStr.erase(responseStr.size()-1);
                 }
-                MYDEBUGF(DBG_SCOPE, "TalkWithAxis Final Response (%s)", response);
+                //MYDEBUGF(DBG_SCOPE, "TalkWithAxis Final Response (%s)", response);
                 return true;
             }
 

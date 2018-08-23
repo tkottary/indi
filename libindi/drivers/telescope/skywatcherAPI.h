@@ -257,6 +257,8 @@ class SkywatcherAPI
     /// \return True if the axis is moving otherwise false.
     bool IsInMotion(AXISID Axis);
 
+
+    void tty_set_skywatcher_udp_format(int udpvalue);
     // Skywatcher mount status variables
     unsigned long MCVersion { 0 }; // Motor control board firmware version
 

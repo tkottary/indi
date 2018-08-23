@@ -82,6 +82,8 @@ bool TCP::ISNewSwitch(const char *dev, const char *name, ISState *states, char *
 
 bool TCP::Connect()
 {
+    LOG_DEBUG("Attempting TCP/UDP connection ...");
+
     if (AddressT[0].text == nullptr || AddressT[0].text[0] == '\0' || AddressT[1].text == nullptr ||
         AddressT[1].text[0] == '\0')
     {
@@ -152,7 +154,7 @@ bool TCP::Connect()
 
     PortFD = sockfd;
 
-    LOG_DEBUG("Connection successful, attempting handshake...");
+    LOG_DEBUG("TCP Connection successful, attempting handshake...");
     bool rc = Handshake();
 
     if (rc)
@@ -162,7 +164,7 @@ bool TCP::Connect()
         m_Device->saveConfig(true, "CONNECTION_TYPE");
     }
     else
-        LOG_DEBUG("Handshake failed.");
+        LOG_DEBUG("TCP Handshake failed.");
 
     return rc;
 }

@@ -760,9 +760,10 @@ bool SkywatcherAPI::TalkWithAxis(AXISID Axis, char Command, std::string &cmdData
 //    MYDEBUGF(DBG_SCOPE, "TalkWithAxis Axis %s Command %c Data (%s)", Axis == AXIS1 ? "AXIS1" : "AXIS2", Command,
 //             cmdDataStr.c_str());
 
+    int  nbytes_read    = 0;
+    int  nbytes_written = 0;
+
     std::string SendBuffer;
-    int bytesWritten;
-    int bytesRead;
     bool StartReading   = false;
     bool EndReading     = false;
     bool mount_response = false;
@@ -775,7 +776,7 @@ bool SkywatcherAPI::TalkWithAxis(AXISID Axis, char Command, std::string &cmdData
 
     if(ttySkywatcherUdpFormat == 0){
 
-    skywatcher_tty_write(MyPortFD, SendBuffer.c_str(), SendBuffer.size(), &bytesWritten);
+    skywatcher_tty_write(MyPortFD, SendBuffer.c_str(), SendBuffer.size(), &nbytes_written);
 
     std::this_thread::sleep_for(std::chrono::milliseconds(5));
     while (!EndReading)
@@ -783,8 +784,8 @@ bool SkywatcherAPI::TalkWithAxis(AXISID Axis, char Command, std::string &cmdData
         std::this_thread::sleep_for(std::chrono::milliseconds(5));
         char c;
 
-        int rc = skywatcher_tty_read(MyPortFD, &c, 1, 10, &bytesRead);
-        if ((rc != TTY_OK) || (bytesRead != 1))
+        int rc = skywatcher_tty_read(MyPortFD, &c, 1, 10, &nbytes_read);
+        if ((rc != TTY_OK) || (nbytes_read != 1))
             return false;
 
         if ((c == '=') || (c == '!'))
@@ -806,12 +807,11 @@ bool SkywatcherAPI::TalkWithAxis(AXISID Axis, char Command, std::string &cmdData
 
     }else{
 
-        char cmd[11];
+            char cmd[11];
             int  errcode = 0;
             char errmsg[MAXRBUF];
             char response[16];
-            int  nbytes_read    = 0;
-            int  nbytes_written = 0;
+
 
                 memset(response, 0, sizeof(response));
 

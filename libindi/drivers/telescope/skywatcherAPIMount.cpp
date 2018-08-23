@@ -1804,9 +1804,10 @@ void SkywatcherAPIMount::UpdateDetailedMountInformation(bool InformClient)
         IUSaveText(&BasicMountInfo[MOUNT_NAME], "Az Goto");
     if (MountCode >= 144 && MountCode <= 159)
         IUSaveText(&BasicMountInfo[MOUNT_NAME], "Dob Goto");
-    if (MountCode >= 160)
+    if (MountCode >= 160 && MountCode<=164)
         IUSaveText(&BasicMountInfo[MOUNT_NAME], "AllView Goto");
-
+    if (MountCode >=165)
+        IUSaveText(&BasicMountInfo[MOUNT_NAME], "AZ-GTI Goto");
     bool AxisOneInfoHasChanged = false;
 
     if (AxisOneInfo[MICROSTEPS_PER_REVOLUTION].value != MicrostepsPerRevolution[0])

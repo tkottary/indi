@@ -121,36 +121,36 @@ bool SkywatcherAPI::CheckIfDCMotor()
 {
     MYDEBUG(DBG_SCOPE, "CheckIfDCMotor");
     // Flush the tty read buffer
-    char input[20];
-    int rc;
-    int nbytes;
+//    char input[20];
+//    int rc;
+//    int nbytes;
 
-    while (true)
-    {
-        rc = skywatcher_tty_read(MyPortFD, input, 20, 5, &nbytes);
-        if (TTY_TIME_OUT == rc)
-            break;
-        if (TTY_OK != rc)
-            return false;
-    }
+//    while (true)
+//    {
+//        rc = skywatcher_tty_read(MyPortFD, input, 20, 5, &nbytes);
+//        if (TTY_TIME_OUT == rc)
+//            break;
+//        if (TTY_OK != rc)
+//            return false;
+//    }
 
-    if (TTY_OK != skywatcher_tty_write(MyPortFD, ":", 1, &nbytes))
-        return false;
+//    if (TTY_OK != skywatcher_tty_write(MyPortFD, ":", 1, &nbytes))
+//        return false;
 
-    rc = skywatcher_tty_read(MyPortFD, input, 1, 5, &nbytes);
+//    rc = skywatcher_tty_read(MyPortFD, input, 1, 5, &nbytes);
 
-    if ((TTY_OK == rc) && (1 == nbytes) && (':' == input[0]))
-    {
-        IsDCMotor = true;
-        return true;
-    }
-    if (TTY_TIME_OUT == rc)
-    {
-        IsDCMotor = false;
-        return true;
-    }
+//    if ((TTY_OK == rc) && (1 == nbytes) && (':' == input[0]))
+//    {
+//        IsDCMotor = true;
+//        return true;
+//    }
+//    if (TTY_TIME_OUT == rc)
+//    {
+//        IsDCMotor = false;
+//        return true;
+//    }
 
-    return false;
+    return true;
 }
 
 bool SkywatcherAPI::IsVirtuosoMount() const
@@ -363,7 +363,7 @@ bool SkywatcherAPI:: InitMount(bool recover)
 {
      //add a check here for UDP connection
 
-    tty_set_skywatcher_udp_format(1);
+        tty_set_skywatcher_udp_format(1);
      MYDEBUG(DBG_SCOPE, "InitMount");
 
 //    if (!CheckIfDCMotor())

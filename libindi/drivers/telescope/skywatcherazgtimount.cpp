@@ -136,10 +136,10 @@ bool SkywatcherAZGTIMount::Connect()
     if (Ret && getActiveConnection()->type() == Connection::Interface::CONNECTION_TCP)
     {
 
-        PortFD = tcpConnection->getPortFD();
-        SetSerialPort(tcpConnection->getPortFD());
+       PortFD = tcpConnection->getPortFD();
+       SetSerialPort(tcpConnection->getPortFD());
 
-      bool initMountFromEQ =  InitMount(RecoverAfterReconnection);
+        bool initMountFromEQ =  InitMount(RecoverAfterReconnection);
       DEBUGF(DBG_SCOPE, "SkywatcherAZGTIMount initMount - Result: %d", initMountFromEQ);
 
     }
@@ -1403,7 +1403,7 @@ void SkywatcherAZGTIMount::UpdateDetailedMountInformation(bool InformClient)
     if (MountCode == 161)
         IUSaveText(&BasicMountInfo[MOUNT_NAME], "Virtuoso");
     else
-    if (MountCode >= 160)
+    if (MountCode >= 160& MountCode<=164)
         IUSaveText(&BasicMountInfo[MOUNT_NAME], "AllView Goto");
     else
     if (MountCode >= 165)

@@ -364,7 +364,7 @@ bool SkywatcherAPI:: InitMount(bool recover)
      //add a check here for UDP connection
 
     tty_set_skywatcher_udp_format(1);
-    MYDEBUG(DBG_SCOPE, "InitMount");
+     MYDEBUG(DBG_SCOPE, "InitMount");
 
 //    if (!CheckIfDCMotor())
 //        return false;

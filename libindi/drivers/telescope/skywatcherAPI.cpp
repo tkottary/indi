@@ -20,6 +20,17 @@
 #include <iomanip>
 #include <memory>
 #include <thread>
+#include <termios.h>
+#include "indicom.h"
+#include <string.h>
+#define AZGTI_TIMEOUT            1
+
+int ttySkywatcherUdpFormat = 0;
+
+void tty_set_skywatcher_udp_format(int enabled)
+{
+    ttySkywatcherUdpFormat = enabled;
+}
 
 void AXISSTATUS::SetFullStop()
 {
@@ -348,12 +359,15 @@ bool SkywatcherAPI::InitializeMC()
     return true;
 }
 
-bool SkywatcherAPI::InitMount(bool recover)
+bool SkywatcherAPI:: InitMount(bool recover)
 {
+     //add a check here for UDP connection
+
+    tty_set_skywatcher_udp_format(1);
     MYDEBUG(DBG_SCOPE, "InitMount");
 
-    if (!CheckIfDCMotor())
-        return false;
+//    if (!CheckIfDCMotor())
+//        return false;
 
     if (!GetMotorBoardVersion(AXIS1))
         return false;
@@ -758,6 +772,9 @@ bool SkywatcherAPI::TalkWithAxis(AXISID Axis, char Command, std::string &cmdData
     SendBuffer.push_back(Axis == AXIS1 ? '1' : '2');
     SendBuffer.append(cmdDataStr);
     SendBuffer.push_back('\r');
+
+    if(ttySkywatcherUdpFormat == 0){
+
     skywatcher_tty_write(MyPortFD, SendBuffer.c_str(), SendBuffer.size(), &bytesWritten);
 
     std::this_thread::sleep_for(std::chrono::milliseconds(5));
@@ -786,8 +803,65 @@ bool SkywatcherAPI::TalkWithAxis(AXISID Axis, char Command, std::string &cmdData
         if (StartReading)
             responseStr.push_back(c);
     }
-//    MYDEBUGF(DBG_SCOPE, "TalkWithAxis - %s Response (%s)", mount_response ? "Good" : "Bad", responseStr.c_str());
-    return true;
+
+    }else{
+
+        char cmd[11];
+            int  errcode = 0;
+            char errmsg[MAXRBUF];
+            char response[16];
+            int  nbytes_read    = 0;
+            int  nbytes_written = 0;
+
+                memset(response, 0, sizeof(response));
+
+                std::string SendBuffer;
+                SendBuffer.push_back(':');
+                SendBuffer.push_back(Command);
+                SendBuffer.push_back(Axis == AXIS1 ? '1' : '2');
+                SendBuffer.append(cmdDataStr);
+                SendBuffer.push_back('\r');
+
+                snprintf(cmd, 11, "%s",SendBuffer.c_str());
+
+                MYDEBUGF(DBG_SCOPE, "TalkWithAxis Fcomand is (%s)", cmd);
+
+
+                tcflush(MyPortFD, TCIFLUSH);
+
+                if ((errcode = tty_write(MyPortFD, cmd, strlen(cmd), &nbytes_written)) != TTY_OK)
+                {
+                    tty_error_msg(errcode, errmsg, MAXRBUF);
+                    MYDEBUGF(DBG_SCOPE, "TalkWithAxis Final Response (%s)", errmsg);
+                    return false;
+                }
+
+            tty_read(MyPortFD, response, 9, AZGTI_TIMEOUT, &nbytes_read);
+
+
+            if (nbytes_read > 0)
+            {
+                MYDEBUGF(DBG_SCOPE, "TalkWithAxis Final Response before trimming (%s)", response);
+                tcflush(MyPortFD, TCIFLUSH);
+
+                responseStr = response;
+                if (response[0] == '!')
+                {
+                    MYDEBUG(DBG_SCOPE, "Bad reponse from mount");
+                    return false;
+                }else{
+                        responseStr.erase(0, 1);
+                        responseStr.erase(responseStr.size()-1);
+                }
+                MYDEBUGF(DBG_SCOPE, "TalkWithAxis Final Response (%s)", response);
+                return true;
+            }
+
+            return false;
+
+    }
+
+ return true;
 }
 
 bool SkywatcherAPI::IsInMotion(AXISID Axis)

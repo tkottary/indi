@@ -568,6 +568,17 @@ add_executable(indi_synscan_telescope ${synscan_SRC})
 target_link_libraries(indi_synscan_telescope indidriver AlignmentDriver)
 
 install(TARGETS indi_synscan_telescope RUNTIME DESTINATION bin)
+#################################################################################
+
+########### Skywatcher AZ GTi ###############
+SET(skywatcherazgti_SRC
+    ${CMAKE_CURRENT_SOURCE_DIR}/drivers/telescope/skywatcherazgtimount.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/drivers/telescope/skywatcherAPI.cpp)
+
+add_executable(indi_skywatcherazgti_telescope ${skywatcherazgti_SRC})
+target_link_libraries(indi_skywatcherazgti_telescope indidriver)
+
+install(TARGETS indi_skywatcherazgti_telescope RUNTIME DESTINATION bin)
 
 ########### Sky Commander ###############
 SET(skycommander_SRC

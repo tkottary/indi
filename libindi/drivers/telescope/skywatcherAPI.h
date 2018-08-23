@@ -30,6 +30,7 @@
 #define MYDEBUGF(priority, msg, ...)
 #endif
 
+
 struct AXISSTATUS
 {
     AXISSTATUS()
@@ -299,7 +300,6 @@ class SkywatcherAPI
 
     AXISSTATUS AxesStatus[2];
     double SlewingSpeed[2];
-
   protected:
     // Custom debug level
     unsigned int DBG_SCOPE { 0 };

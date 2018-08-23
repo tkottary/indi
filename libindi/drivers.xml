@@ -173,6 +173,10 @@
                 <driver name="Skywatcher Alt-Az Wedge">indi_skywatcherAltAzSimple</driver>
                 <version>1.0</version>
         </device>
+        <device label="Skywatcher AZ-GTI">
+                       <driver name="Skywatcher AZ GTI">indi_skywatcherazgti_telescope</driver>
+                       <version>1.0</version>
+               </device>
         <device label="Telescope Scripting Gateway">
           <driver name="Telescope  Scripting Gateway">indi_script_telescope</driver>
           <version>1.0</version>

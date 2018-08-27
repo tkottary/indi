@@ -138,12 +138,14 @@ bool SkywatcherAZGTIMount::Connect()
 
 
         tty_set_skywatcher_udp_format(1);
-       PortFD = tcpConnection->getPortFD();
-       SetSerialPort(tcpConnection->getPortFD());
+        PortFD = tcpConnection->getPortFD();
+        SetSerialPort(tcpConnection->getPortFD());
 
         bool initMountFromEQ =  InitMount(RecoverAfterReconnection);
         DEBUGF(DBG_SCOPE, "SkywatcherAZGTIMount initMount - Result: %d", initMountFromEQ);
 
+
+        startTracking();
     }
     return Ret;
 }
@@ -152,6 +154,7 @@ const char *SkywatcherAZGTIMount::getDefaultName()
     //DEBUG(DBG_SCOPE, "SkywatcherAZGTIMount::getDefaultName\n");
     return "Skywatcher AZ-GTI";
 }
+
 
 bool SkywatcherAZGTIMount::Goto(double ra, double dec)
 {
@@ -328,7 +331,7 @@ bool SkywatcherAZGTIMount::initProperties()
 
     // Slew modes
     IUFillSwitch(&SlewModes[SLEW_SILENT], "SLEW_SILENT", "Silent", ISS_OFF);
-    IUFillSwitch(&SlewModes[SLEW_NORMAL], "SLEW_NORMAL", "Normal", ISS_OFF);
+    IUFillSwitch(&SlewModes[SLEW_NORMAL], "SLEW_NORMAL", "Normal", ISS_ON);
     IUFillSwitchVector(&SlewModesSP, SlewModes, 2, getDeviceName(), "TELESCOPE_MOTION_SLEWMODE", "Slew Mode",
                        MOTION_TAB, IP_RW, ISR_ATMOST1, 60, IPS_IDLE);
 
@@ -389,7 +392,6 @@ bool SkywatcherAZGTIMount::initProperties()
     setDriverInterface(getDriverInterface() | GUIDER_INTERFACE);
 
     IUFillSwitch(&TrackModeS[TRACK_SIDEREAL], "TRACK_SIDEREAL", "Sidereal", ISS_ON);
-    IUFillSwitch(&TrackModeS[TRACK_KING], "TRACK_CUSTOM", "King", ISS_OFF);
     IUFillSwitch(&TrackModeS[TRACK_LUNAR], "TRACK_LUNAR", "Lunar", ISS_OFF);
     IUFillSwitch(&TrackModeS[TRACK_SOLAR], "TRACK_SOLAR", "Solar", ISS_OFF);
     IUFillSwitchVector(&TrackModeSSP, TrackModeS, 4, getDeviceName(), "TRACK_MODE", "Tracking Mode",
@@ -1039,7 +1041,7 @@ void SkywatcherAZGTIMount::TimerHit()
     static bool Slewing    = false;
     static bool Tracking   = false;
     static int ElapsedTime = 0;
-
+    char Direction ='0';
     if (!ReadScopeStatus())
     {
         SetTimer(TimeoutDuration);
@@ -1151,6 +1153,8 @@ void SkywatcherAZGTIMount::TimerHit()
             // sidereal speed. Only autoguiding is enabled in tracking mode.
             if (IUFindSwitch(&WedgeModeSP, "WEDGE_EQ")->s == ISS_ON)
             {
+
+                SetMotionMode(AXIS1,'1',Direction);
                 AltitudeOffsetMicrosteps = (long)((float)IUFindNumber(&GuidingRatesNP, "GUIDEDEC_RATE")->value*GuideDeltaAlt);
                 AzimuthOffsetMicrosteps = (long)((float)IUFindNumber(&GuidingRatesNP, "GUIDERA_RATE")->value*GuideDeltaAz);
                 GuideDeltaAlt = 0;
@@ -1203,7 +1207,7 @@ void SkywatcherAZGTIMount::TimerHit()
             else
             {
                 // Nothing to do - stop the axis
-                SlowStop(AXIS1);
+                //SlowStop(AXIS1);
             }
 
             if (0 != AltitudeOffsetMicrosteps)
@@ -1213,7 +1217,7 @@ void SkywatcherAZGTIMount::TimerHit()
             else
             {
                 // Nothing to do - stop the axis
-                SlowStop(AXIS2);
+                //SlowStop(AXIS2);
             }
 
             DEBUGF(DBG_SCOPE, "Tracking - AXIS1 error %d (offset: %ld) AXIS2 error %d (offset: %ld)",
@@ -1645,4 +1649,61 @@ void SkywatcherAZGTIMount::LogMessage(const char* format, ...)
     LogFile << GetLogTimestamp() << " | " << TempStr << "\n";
     LogFile.close();
     va_end(Ap);
+}
+
+bool SkywatcherAZGTIMount::startTracking(){
+
+    StartRATracking(GetRATrackRate());
+    StartDETracking(GetDETrackRate());
+}
+double SkywatcherAZGTIMount::GetRATrackRate()
+{
+    double rate = 0.0;
+    ISwitch *sw;
+    sw = IUFindOnSwitch(&TrackModeSSP);
+    if (!sw)
+        return 0.0;
+    if (!strcmp(sw->name, "TRACK_SIDEREAL"))
+    {
+        rate = TRACKRATE_SIDEREAL;
+    }
+    else if (!strcmp(sw->name, "TRACK_LUNAR"))
+    {
+        rate = TRACKRATE_LUNAR;
+    }
+    else if (!strcmp(sw->name, "TRACK_SOLAR"))
+    {
+        rate = TRACKRATE_SOLAR;
+    }
+    else
+        return 0.0;
+//    if (RAInverted)
+//        rate = -rate;
+    return rate;
+}
+
+double SkywatcherAZGTIMount::GetDETrackRate()
+{
+    double rate = 0.0;
+    ISwitch *sw;
+    sw = IUFindOnSwitch(&TrackModeSSP);
+    if (!sw)
+        return 0.0;
+    if (!strcmp(sw->name, "TRACK_SIDEREAL"))
+    {
+        rate = TRACKRATE_SIDEREAL;
+    }
+    else if (!strcmp(sw->name, "TRACK_LUNAR"))
+    {
+         rate = TRACKRATE_LUNAR;
+    }
+    else if (!strcmp(sw->name, "TRACK_SOLAR"))
+    {
+        rate = TRACKRATE_SOLAR;
+    }
+    else
+        return 0.0;
+//    if (DEInverted)
+//        rate = -rate;
+    return rate;
 }

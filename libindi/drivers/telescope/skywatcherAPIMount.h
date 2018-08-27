@@ -85,6 +85,7 @@ private:
     const INDI::AlignmentSubsystem::TelescopeDirectionVector
     TelescopeDirectionVectorFromSkywatcherMicrosteps(long Axis1Microsteps, long Axis2Microsteps);
 
+
     void UpdateDetailedMountInformation(bool InformClient);
 
     // Properties

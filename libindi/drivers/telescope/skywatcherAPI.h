@@ -20,6 +20,12 @@
 
 #define INDI_DEBUG_LOGGING
 #ifdef INDI_DEBUG_LOGGING
+#define SKYWATCHER_SIDEREAL_DAY   86164.09053083288
+#define SKYWATCHER_SIDEREAL_SPEED 15.04106864
+#define SKYWATCHER_STELLAR_DAY    86164.098903691
+#define SKYWATCHER_STELLAR_SPEED  15.041067179
+#define SKYWATCHER_LOWSPEED_RATE 128
+
 #include "indibase/inditelescope.h"
 #define MYDEBUG(priority, msg) \
     INDI::Logger::getInstance().print(pChildTelescope->getDeviceName(), priority, __FILE__, __LINE__, msg)
@@ -61,7 +67,7 @@ class SkywatcherAPI
 
     // These values are in radians per second
     static constexpr double SIDEREALRATE { (2 * M_PI / 86164.09065) };
-    static constexpr double MAX_SPEED { 500.0 };
+    static constexpr double MAX_SPEED { 800.0 };
     static constexpr double LOW_SPEED_MARGIN { 128.0 * SIDEREALRATE };
 
     SkywatcherAPI();
@@ -69,6 +75,7 @@ class SkywatcherAPI
 
     unsigned long BCDstr2long(std::string &String);
     unsigned long Highstr2long(std::string &String);
+    unsigned long Revu24str2long(std::string &String);
     bool CheckIfDCMotor();
 
     /// \brief Check if the current mount is a Virtuoso (AltAz)
@@ -250,6 +257,7 @@ class SkywatcherAPI
     /// \return false failure
     bool StartMotion(AXISID Axis);
 
+
     bool TalkWithAxis(AXISID Axis, char Command, std::string &cmdDataStr, std::string &responseStr);
 
     /// \brief Check if an axis is moving
@@ -258,6 +266,13 @@ class SkywatcherAPI
     bool IsInMotion(AXISID Axis);
 
 
+    double get_min_rate();
+    double get_max_rate();
+    void SetRARate(double rate);
+    void SetDERate(double rate);
+    void StartRATracking(double trackspeed);
+    void StartDETracking(double trackspeed);
+    void InquireFeatures();
     void tty_set_skywatcher_udp_format(int udpvalue);
     // Skywatcher mount status variables
     unsigned long MCVersion { 0 }; // Motor control board firmware version
@@ -327,7 +342,62 @@ class SkywatcherAPI
     //    virtual void skywatcher_tty_error_msg(int err_code, char *err_msg, int err_msg_len) = 0;
     //    virtual int skywatcher_tty_timeout(int fd, int timeout) = 0;*/
     int MyPortFD { 0 };
+    static constexpr double MIN_RATE         = 0.05;
+    static constexpr double MAX_RATE         = 800.0;
 
+
+    typedef struct SkyWatcherFeatures
+    {
+        bool inPPECTraining = false;
+        bool inPPEC = false;
+        bool hasEncoder = false;
+        bool hasPPEC = false;
+        bool hasHomeIndexer = false;
+        bool isAZEQ = false;
+        bool hasPolarLed = false;
+        bool hasCommonSlewStart = false; // supports :J3
+        bool hasHalfCurrentTracking = false;
+        bool hasWifi = false;
+    } SkyWatcherFeatures;
+
+    enum SkywatcherSetFeatureCmd
+    {
+        START_PPEC_TRAINING_CMD            = 0x00,
+        STOP_PPEC_TRAINING_CMD             = 0x01,
+        TURN_PPEC_ON_CMD                   = 0x02,
+        TURN_PPEC_OFF_CMD                  = 0X03,
+        ENCODER_ON_CMD                     = 0x04,
+        ENCODER_OFF_CMD                    = 0x05,
+        DISABLE_FULL_CURRENT_LOW_SPEED_CMD = 0x0006,
+        ENABLE_FULL_CURRENT_LOW_SPEED_CMD  = 0x0106,
+        RESET_HOME_INDEXER_CMD             = 0x08
+    };
+
+    enum SkywatcherDirection
+    {
+        BACKWARD = 0,
+        FORWARD  = 1
+    };
+    enum SkywatcherSlewMode
+    {
+        SLEW = 0,
+        GOTO = 1
+    };
+    enum SkywatcherSpeedMode
+    {
+        LOWSPEED  = 0,
+        HIGHSPEED = 1
+    };
+
+    typedef struct SkywatcherAxisStatus
+    {
+        SkywatcherDirection direction;
+        SkywatcherSlewMode slewmode;
+        SkywatcherSpeedMode speedmode;
+    } SkywatcherAxisStatus;
+
+    void SetFeature(AXISID axis, unsigned long command);
+    void GetFeature(AXISID axis, unsigned long command);
 #ifdef INDI_DEBUG_LOGGING
   public:
     INDI::Telescope *pChildTelescope { nullptr };

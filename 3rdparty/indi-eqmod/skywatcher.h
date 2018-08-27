@@ -230,6 +230,7 @@ class Skywatcher
         SkywatcherSlewMode slewmode;
         SkywatcherSpeedMode speedmode;
     } SkywatcherAxisStatus;
+
     enum SkywatcherError
     {
         NO_ERROR,
@@ -303,7 +304,6 @@ class Skywatcher
     bool RAInitialized, DEInitialized, RARunning, DERunning;
     bool wasinitialized;
     SkywatcherAxisStatus RAStatus, DEStatus;
-    SkyWatcherFeatures AxisFeatures[NUMBER_OF_SKYWATCHERAXIS];
 
     int PortFD = -1;
     char command[SKYWATCHER_MAX_CMD];

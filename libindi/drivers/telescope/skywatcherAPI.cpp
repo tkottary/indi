@@ -117,38 +117,47 @@ unsigned long SkywatcherAPI::Highstr2long(std::string &String)
     return res;
 }
 
-bool SkywatcherAPI::CheckIfDCMotor()
+ bool SkywatcherAPI::CheckIfDCMotor()
 {
     MYDEBUG(DBG_SCOPE, "CheckIfDCMotor");
-    // Flush the tty read buffer
-//    char input[20];
-//    int rc;
-//    int nbytes;
+    int  nbytes_read    = 0;
+    int  nbytes_written = 0;
 
-//    while (true)
-//    {
-//        rc = skywatcher_tty_read(MyPortFD, input, 20, 5, &nbytes);
-//        if (TTY_TIME_OUT == rc)
-//            break;
-//        if (TTY_OK != rc)
-//            return false;
-//    }
+    std::string SendBuffer;
 
-//    if (TTY_OK != skywatcher_tty_write(MyPortFD, ":", 1, &nbytes))
-//        return false;
+    SendBuffer.push_back(':');
+    //SendBuffer.push_back(':');
+    SendBuffer.push_back('\r');
+    int  errcode = 0;
+    char errmsg[MAXRBUF];
+    char response[16];
+        memset(response, 0, sizeof(response));
+        tcflush(MyPortFD, TCIFLUSH);
 
-//    rc = skywatcher_tty_read(MyPortFD, input, 1, 5, &nbytes);
+        if ((errcode = tty_write(MyPortFD, SendBuffer.c_str(), 1, &nbytes_written)) != TTY_OK)
+        {
+            tty_error_msg(errcode, errmsg, MAXRBUF);
+            return false;
+        }
 
-//    if ((TTY_OK == rc) && (1 == nbytes) && (':' == input[0]))
-//    {
-//        IsDCMotor = true;
-//        return true;
-//    }
-//    if (TTY_TIME_OUT == rc)
-//    {
-//        IsDCMotor = false;
-//        return true;
-//    }
+    tty_read(MyPortFD, response, 9, AZGTI_TIMEOUT, &nbytes_read);
+
+
+    if (nbytes_read > 0)
+    {
+        tcflush(MyPortFD, TCIFLUSH);
+
+        if (response[0] == '!')
+        {
+            MYDEBUG(DBG_SCOPE, "Bad reponse from mount");
+            IsDCMotor=false;
+            return false;
+        }else if (':' == response[0]){
+               IsDCMotor=true;
+               return true;
+        }
+        return true;
+    }
 
     return true;
 }
@@ -200,6 +209,63 @@ bool SkywatcherAPI::GetHighSpeedRatio(AXISID Axis)
     HighSpeedRatio[(int)Axis]    = highSpeedRatio;
 
     return true;
+}
+
+void SkywatcherAPI::InquireFeatures()
+{
+
+        GetFeature(AXIS1, '0');
+}
+
+void SkywatcherAPI::GetFeature(AXISID axis, unsigned long command)
+{
+    unsigned long features = 0,rafeatures = 0;
+    MYDEBUG(DBG_SCOPE, "GetFeature");
+    std::string Parameters, Response;
+
+    Parameters.push_back(command);
+
+    Parameters.push_back('1');
+    Parameters.push_back('0');
+    Parameters.push_back('0');
+    Parameters.push_back('0');
+    Parameters.push_back('0');
+
+
+    //IDLog("Setting target for axis %c  to %d\n", AxisCmd[axis], increment);
+    TalkWithAxis(axis, 'q', Parameters, Response);
+
+        features= BCDstr2long(Response);
+        //rafeatures = Revu24str2long(Response+1);
+        bool isAZEQ  = features & 0x00000008;
+        bool inPPECTraining         = features & 0x00000010;
+        bool inPPEC                 = features & 0x00000020;
+        bool hasEncoder             = features & 0x00000001;
+        bool hasPPEC                = features & 0x00000002;
+        bool hasHomeIndexer         = features & 0x00000004;
+        bool hasPolarLed            = features & 0x00001000;
+        bool hasCommonSlewStart     = features & 0x00002000; // supports :J3
+        bool hasHalfCurrentTracking = features & 0x00004000;
+
+    MYDEBUGF(DBG_SCOPE, "GetFeature isAZEQ  %ld",isAZEQ);
+    MYDEBUGF(DBG_SCOPE, "GetFeaturei nPPECTraining  %ld",inPPECTraining);
+
+    MYDEBUGF(DBG_SCOPE, "GetFeature inPPEC  %ld",inPPEC);
+    MYDEBUGF(DBG_SCOPE, "GetFeaturei hasEncoder  %ld",hasEncoder);
+    MYDEBUGF(DBG_SCOPE, "GetFeature hasPPEC  %ld",hasPPEC);
+    MYDEBUGF(DBG_SCOPE, "GetFeaturei hasHomeIndexer  %ld",hasHomeIndexer);
+    MYDEBUGF(DBG_SCOPE, "GetFeature hasPolarLed  %ld",hasPolarLed);
+    MYDEBUGF(DBG_SCOPE, "GetFeaturei hasCommonSlewStart  %ld",hasCommonSlewStart);
+     MYDEBUGF(DBG_SCOPE, "GetFeaturei hasHalfCurrentTracking  %ld",hasHalfCurrentTracking);
+}
+double SkywatcherAPI::get_min_rate()
+{
+    return MIN_RATE;
+}
+
+double SkywatcherAPI::get_max_rate()
+{
+    return MAX_RATE;
 }
 
 bool SkywatcherAPI::GetMicrostepsPerRevolution(AXISID Axis)
@@ -281,6 +347,7 @@ bool SkywatcherAPI::GetStepperClockFrequency(AXISID Axis)
         return false;
 
     StepperClockFrequency[(int)Axis] = BCDstr2long(Response);
+
 
     return true;
 }
@@ -366,13 +433,15 @@ bool SkywatcherAPI:: InitMount(bool recover)
         //tty_set_skywatcher_udp_format(1);
         MYDEBUG(DBG_SCOPE, "InitMount");
 
-//    if (!CheckIfDCMotor())
-//        return false;
+        // add checks for EQ mode or AZ Mode
 
-    if (!GetMotorBoardVersion(AXIS1))
+        CheckIfDCMotor();
+        InquireFeatures();
+
+        if (!GetMotorBoardVersion(AXIS1))
         return false;
 
-    MountCode = MCVersion & 0xFF;
+        MountCode = MCVersion & 0xFF;
 
     // Disable EQ mounts
 //    if (MountCode < 0x80)
@@ -426,15 +495,11 @@ bool SkywatcherAPI:: InitMount(bool recover)
     if (!InitializeMC())
         return false;
 
-    if (!GetEncoder(AXIS1))
-        return false;
-    if (!GetEncoder(AXIS2))
-        return false;
-    MYDEBUGF(DBG_SCOPE, "Encoders after init Axis1 %ld Axis2 %ld", CurrentEncoders[AXIS1], CurrentEncoders[AXIS2]);
 
     // These two LowSpeedGotoMargin are calculate from slewing for 5 seconds in 128x sidereal rate
     LowSpeedGotoMargin[(int)AXIS1] = (long)(640 * SIDEREALRATE * MicrostepsPerRadian[(int)AXIS1]);
     LowSpeedGotoMargin[(int)AXIS2] = (long)(640 * SIDEREALRATE * MicrostepsPerRadian[(int)AXIS2]);
+
 
     return true;
 }
@@ -555,7 +620,7 @@ bool SkywatcherAPI::SetGotoTargetOffset(AXISID Axis, long OffsetInMicrosteps)
 /// Func - 3 High speed slew mode
 bool SkywatcherAPI::SetMotionMode(AXISID Axis, char Func, char Direction)
 {
-//    MYDEBUG(DBG_SCOPE, "SetMotionMode");
+    MYDEBUG(DBG_SCOPE, "SetMotionMode");
     std::string Parameters, Response;
 
     Parameters.push_back(Func);
@@ -755,6 +820,7 @@ bool SkywatcherAPI::StartMotion(AXISID Axis)
     return TalkWithAxis(Axis, 'J', Parameters, Response);
 }
 
+
 bool SkywatcherAPI::TalkWithAxis(AXISID Axis, char Command, std::string &cmdDataStr, std::string &responseStr)
 {
 //    MYDEBUGF(DBG_SCOPE, "TalkWithAxis Axis %s Command %c Data (%s)", Axis == AXIS1 ? "AXIS1" : "AXIS2", Command,
@@ -814,7 +880,7 @@ bool SkywatcherAPI::TalkWithAxis(AXISID Axis, char Command, std::string &cmdData
                 memset(response, 0, sizeof(response));
                 snprintf(cmd, 11, "%s",SendBuffer.c_str());
 
-                //MYDEBUGF(DBG_SCOPE, "TalkWithAxis Fcomand is (%s)", cmd);
+                MYDEBUGF(DBG_SCOPE, "TalkWithAxis comand is %s", cmd);
 
 
                 tcflush(MyPortFD, TCIFLUSH);
@@ -843,7 +909,7 @@ bool SkywatcherAPI::TalkWithAxis(AXISID Axis, char Command, std::string &cmdData
                         responseStr.erase(0, 1);
                         responseStr.erase(responseStr.size()-1);
                 }
-                //MYDEBUGF(DBG_SCOPE, "TalkWithAxis Final Response (%s)", response);
+                MYDEBUGF(DBG_SCOPE, "TalkWithAxis Final Response %s", response);
                 return true;
             }
 
@@ -859,4 +925,137 @@ bool SkywatcherAPI::IsInMotion(AXISID Axis)
     MYDEBUG(DBG_SCOPE, "IsInMotion");
 
     return AxesStatus[(int)Axis].Slewing || AxesStatus[(int)Axis].SlewingTo;
+}
+
+void SkywatcherAPI::SetRARate(double rate)
+{
+    double absrate       = fabs(rate);
+    unsigned long period = 0;
+    bool useHighspeed    = false;
+    SkywatcherAxisStatus newstatus;
+
+   char motion,direction;
+
+
+    //LOGF_DEBUG("%s() : rate = %g", __FUNCTION__, rate);
+
+    if ((absrate < get_min_rate()) || (absrate > get_max_rate()))
+    {
+        //throw EQModError(EQModError::ErrInvalidParameter, s  "Speed rate out of limits: %.2fx Sidereal (min=%.2f, max=%.2f)", absrate, MIN_RATE, MAX_RATE);
+    }
+    //if (MountCode != 0xF0) {
+    if (absrate > SKYWATCHER_LOWSPEED_RATE)
+    {
+        absrate      = absrate / HighSpeedRatio[AXIS1];
+        useHighspeed = true;
+    }
+    //}//StepperClockFrequency MicrostepsPerRevolution
+
+    period              = (long)(((SKYWATCHER_STELLAR_DAY * (double)StepperClockFrequency[AXIS1]) / (double)MicrostepsPerRevolution[AXIS1]) / absrate);
+
+    newstatus.direction = ((rate >= 0.0) ? FORWARD : BACKWARD);
+    if (newstatus.direction == FORWARD)
+       direction = '0';
+    else
+        direction = '1';
+
+    //newstatus.slewmode=RAStatus.slewmode;
+    newstatus.slewmode = SLEW;
+    if (useHighspeed){
+        newstatus.speedmode = HIGHSPEED;
+        motion = '3';
+    }
+    else{
+        motion = '1';
+        newstatus.speedmode = LOWSPEED;
+    }
+    if (IsInMotion(AXIS1))
+    {
+        //if (newstatus.speedmode != RAStatus.speedmode)
+            //throw EQModError(EQModError::ErrInvalidParameter, "Can not change rate while motor is running (speedmode differs).");
+        //if (newstatus.direction != RAStatus.direction)
+            //throw EQModError(EQModError::ErrInvalidParameter,"Can not change rate while motor is running (direction differs).");
+    }
+
+    SetMotionMode(AXIS1, motion,direction);
+    SetClockTicksPerMicrostep(AXIS1, period);
+
+}
+
+
+void SkywatcherAPI::SetDERate(double rate)
+{
+    double absrate       = fabs(rate);
+    unsigned long period = 0;
+    bool useHighspeed    = false;
+    SkywatcherAxisStatus newstatus;
+
+    //LOGF_DEBUG("%s() : rate = %g", __FUNCTION__, rate);
+
+    if ((absrate < get_min_rate()) || (absrate > get_max_rate()))
+    {
+        //throw EQModError(EQModError::ErrInvalidParameter, "Speed rate out of limits: %.2fx Sidereal (min=%.2f, max=%.2f)", absrate, MIN_RATE, MAX_RATE);
+    }
+    //if (MountCode != 0xF0) {
+    if (absrate > SKYWATCHER_LOWSPEED_RATE)
+    {
+        absrate      = absrate / HighSpeedRatio[AXIS2];
+        useHighspeed = true;
+    }
+    //}
+    period              = (long)(((SKYWATCHER_STELLAR_DAY * (double)StepperClockFrequency[AXIS2]) / (double)MicrostepsPerRevolution[AXIS2]) / absrate);
+    newstatus.direction = ((rate >= 0.0) ? FORWARD : BACKWARD);
+    //newstatus.slewmode=DEStatus.slewmode;
+    newstatus.slewmode = SLEW;
+    if (useHighspeed)
+        newstatus.speedmode = HIGHSPEED;
+    else
+        newstatus.speedmode = LOWSPEED;
+    if (IsInMotion(AXIS2))
+    {
+       // if (newstatus.speedmode != DEStatus.speedmode)
+            //throw EQModError(EQModError::ErrInvalidParameter,  "Can not change rate while motor is running (speedmode differs).");
+        //if (newstatus.direction != DEStatus.direction)
+            //throw EQModError(EQModError::ErrInvalidParameter,"Can not change rate while motor is running (direction differs).");
+    }
+
+    //StartMotion(AXIS2, newstatus);
+        SetMotionMode(AXIS2, newstatus.speedmode, newstatus.direction);
+        SetClockTicksPerMicrostep(AXIS2, period);
+}
+
+void SkywatcherAPI::StartRATracking(double trackspeed)
+{
+    double rate;
+    if (trackspeed != 0.0)
+        rate = trackspeed / SKYWATCHER_STELLAR_SPEED;
+    else
+        rate = 0.0;
+    //LOGF_DEBUG("%s() : trackspeed = %g arcsecs/s, computed rate = %g", __FUNCTION__, trackspeed, rate);
+    if (rate != 0.0)
+    {
+        SetRARate(rate);
+        if (!IsInMotion(AXIS1))
+            StartMotion(AXIS1);
+    }
+    else
+        SlowStop(AXIS1);
+}
+
+void SkywatcherAPI::StartDETracking(double trackspeed)
+{
+    double rate;
+    if (trackspeed != 0.0)
+        rate = trackspeed / SKYWATCHER_STELLAR_SPEED;
+    else
+        rate = 0.0;
+    //LOGF_DEBUG("%s() : trackspeed = %g arcsecs/s, computed rate = %g", __FUNCTION__, trackspeed,rate);
+    if (rate != 0.0)
+    {
+        SetDERate(rate);
+        if (!IsInMotion(AXIS2))
+            StartMotion(AXIS2);
+    }
+    else
+        SlowStop(AXIS2);
 }

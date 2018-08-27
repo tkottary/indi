@@ -36,6 +36,10 @@ public:
     virtual bool ISNewSwitch(const char *dev, const char *name, ISState *states, char *names[], int n) override;
     virtual bool ISNewText(const char *dev, const char *name, char *texts[], char *names[], int n) override;
 
+
+    bool startTracking();
+    double GetRATrackRate();
+    double GetDETrackRate();
     double GetSlewRate();
     virtual bool MoveNS(INDI_DIR_NS dir, TelescopeMotionCommand command) override;
     virtual bool MoveWE(INDI_DIR_WE dir, TelescopeMotionCommand command) override;
@@ -48,12 +52,14 @@ public:
     virtual bool Sync(double ra, double dec) override;
     virtual void TimerHit() override;
 
-
     virtual IPState GuideNorth(uint32_t ms) override;
     virtual IPState GuideSouth(uint32_t ms) override;
     virtual IPState GuideEast(uint32_t ms) override;
     virtual IPState GuideWest(uint32_t ms) override;
 private:
+
+   SkywatcherAPI *mount;
+
     void ResetGuidePulses();
     void UpdateScopeConfigSwitch();
     // Overrides for the pure virtual functions in SkyWatcherAPI
@@ -171,8 +177,8 @@ private:
     ISwitch UnparkPosition[4];
     ISwitchVectorProperty UnparkPositionSP;
 
-    // A switch for unpark positions
-    ISwitch TrackModeS[4];
+    // A switch for track positions
+    ISwitch TrackModeS[3];
     ISwitchVectorProperty TrackModeSSP;
 
     // Tracking

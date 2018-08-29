@@ -86,6 +86,9 @@ class SkywatcherAPI
     /// \return True if the current mount is Merlin otherwise false.
     bool IsMerlinMount() const;
 
+    bool  IsAZGTIMount() const;
+
+
     /// \brief Convert a slewing rate in degrees per second into the required
     /// clock ticks per microstep setting.
     /// \param[in] Axis - The axis to use.
@@ -256,7 +259,8 @@ class SkywatcherAPI
     /// \param[in] Axis - The axis to use.
     /// \return false failure
     bool StartMotion(AXISID Axis);
-
+    void TurnRAEncoder(bool on);
+    void TurnDEEncoder(bool on);
 
     bool TalkWithAxis(AXISID Axis, char Command, std::string &cmdDataStr, std::string &responseStr);
 
@@ -272,6 +276,12 @@ class SkywatcherAPI
     void SetDERate(double rate);
     void StartRATracking(double trackspeed);
     void StartDETracking(double trackspeed);
+
+    void StartRAGuiding(char trackspeed);
+    void StartDEGuiding(char trackspeed);
+
+
+    bool SetGuideSpeed(AXISID Axis,char trackspeed);
     void InquireFeatures();
     void tty_set_skywatcher_udp_format(int udpvalue);
     // Skywatcher mount status variables
@@ -396,8 +406,11 @@ class SkywatcherAPI
         SkywatcherSpeedMode speedmode;
     } SkywatcherAxisStatus;
 
-    void SetFeature(AXISID axis, unsigned long command);
+    void SetFeature(AXISID axis, char command);
     void GetFeature(AXISID axis, unsigned long command);
+
+    void TurnEncoder(AXISID axis, bool on);
+
 #ifdef INDI_DEBUG_LOGGING
   public:
     INDI::Telescope *pChildTelescope { nullptr };

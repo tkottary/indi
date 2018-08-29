@@ -159,7 +159,7 @@ unsigned long SkywatcherAPI::Highstr2long(std::string &String)
         return true;
     }
 
-    return true;
+    return false;
 }
 
 bool SkywatcherAPI::IsVirtuosoMount() const
@@ -170,6 +170,10 @@ bool SkywatcherAPI::IsVirtuosoMount() const
 bool SkywatcherAPI::IsMerlinMount() const
 {
     return MountCode >= 0x80 && MountCode < 0x90;
+}
+bool SkywatcherAPI::IsAZGTIMount() const
+{
+    return MountCode == 0xA5;
 }
 
 long SkywatcherAPI::DegreesPerSecondToClocksTicksPerMicrostep(AXISID Axis, double DegreesPerSecond)
@@ -219,7 +223,7 @@ void SkywatcherAPI::InquireFeatures()
 
 void SkywatcherAPI::GetFeature(AXISID axis, unsigned long command)
 {
-    unsigned long features = 0,rafeatures = 0;
+    unsigned long features = 0;
     MYDEBUG(DBG_SCOPE, "GetFeature");
     std::string Parameters, Response;
 
@@ -236,28 +240,69 @@ void SkywatcherAPI::GetFeature(AXISID axis, unsigned long command)
     TalkWithAxis(axis, 'q', Parameters, Response);
 
         features= BCDstr2long(Response);
-        //rafeatures = Revu24str2long(Response+1);
-        bool isAZEQ  = features & 0x00000008;
-        bool inPPECTraining         = features & 0x00000010;
-        bool inPPEC                 = features & 0x00000020;
-        bool hasEncoder             = features & 0x00000001;
-        bool hasPPEC                = features & 0x00000002;
-        bool hasHomeIndexer         = features & 0x00000004;
-        bool hasPolarLed            = features & 0x00001000;
-        bool hasCommonSlewStart     = features & 0x00002000; // supports :J3
-        bool hasHalfCurrentTracking = features & 0x00004000;
+      //  bool isAZEQ  = features & 0x00000008;
+//        bool inPPECTraining         = features & 0x00000010;
+//        bool inPPEC                 = features & 0x00000020;
+//        bool hasEncoder             = features & 0x00000001;
+//        bool hasPPEC                = features & 0x00000002;
+//        bool hasHomeIndexer         = features & 0x00000004;
+//        bool hasPolarLed            = features & 0x00001000;
+//        bool hasCommonSlewStart     = features & 0x00002000; // supports :J3
+//        bool hasHalfCurrentTracking = features & 0x00004000;
 
-    MYDEBUGF(DBG_SCOPE, "GetFeature isAZEQ  %ld",isAZEQ);
-    MYDEBUGF(DBG_SCOPE, "GetFeaturei nPPECTraining  %ld",inPPECTraining);
+//    MYDEBUGF(DBG_SCOPE, "GetFeature isAZEQ  %ld",isAZEQ);
+//    MYDEBUGF(DBG_SCOPE, "GetFeaturei nPPECTraining  %ld",inPPECTraining);
 
-    MYDEBUGF(DBG_SCOPE, "GetFeature inPPEC  %ld",inPPEC);
-    MYDEBUGF(DBG_SCOPE, "GetFeaturei hasEncoder  %ld",hasEncoder);
-    MYDEBUGF(DBG_SCOPE, "GetFeature hasPPEC  %ld",hasPPEC);
-    MYDEBUGF(DBG_SCOPE, "GetFeaturei hasHomeIndexer  %ld",hasHomeIndexer);
-    MYDEBUGF(DBG_SCOPE, "GetFeature hasPolarLed  %ld",hasPolarLed);
-    MYDEBUGF(DBG_SCOPE, "GetFeaturei hasCommonSlewStart  %ld",hasCommonSlewStart);
-     MYDEBUGF(DBG_SCOPE, "GetFeaturei hasHalfCurrentTracking  %ld",hasHalfCurrentTracking);
+//    MYDEBUGF(DBG_SCOPE, "GetFeature inPPEC  %ld",inPPEC);
+//    MYDEBUGF(DBG_SCOPE, "GetFeaturei hasEncoder  %ld",hasEncoder);
+//    MYDEBUGF(DBG_SCOPE, "GetFeature hasPPEC  %ld",hasPPEC);
+//    MYDEBUGF(DBG_SCOPE, "GetFeaturei hasHomeIndexer  %ld",hasHomeIndexer);
+//    MYDEBUGF(DBG_SCOPE, "GetFeature hasPolarLed  %ld",hasPolarLed);
+//    MYDEBUGF(DBG_SCOPE, "GetFeaturei hasCommonSlewStart  %ld",hasCommonSlewStart);
+//     MYDEBUGF(DBG_SCOPE, "GetFeaturei hasHalfCurrentTracking  %ld",hasHalfCurrentTracking);
 }
+
+
+void SkywatcherAPI::SetFeature(AXISID axis, char command){
+
+    MYDEBUG(DBG_SCOPE, "SetFeature");
+    std::string Parameters, Response;
+\
+    Parameters.push_back('0');
+    Parameters.push_back(command);
+    Parameters.push_back('0');
+    Parameters.push_back('0');
+    Parameters.push_back('0');
+    Parameters.push_back('0');
+
+
+    //IDLog("Setting target for axis %c  to %d\n", AxisCmd[axis], increment);
+    TalkWithAxis(axis, 'W', Parameters, Response);
+
+}
+
+void SkywatcherAPI::TurnEncoder(AXISID axis, bool on)
+{
+   char  command;
+    if (on)
+        command = '4';
+    else
+        command = '5';
+
+    SetFeature(axis, command);
+}
+
+void SkywatcherAPI::TurnRAEncoder(bool on)
+{
+    TurnEncoder(AXIS1, on);
+}
+
+void SkywatcherAPI::TurnDEEncoder(bool on)
+{
+    TurnEncoder(AXIS2, on);
+}
+
+
 double SkywatcherAPI::get_min_rate()
 {
     return MIN_RATE;
@@ -428,24 +473,27 @@ bool SkywatcherAPI::InitializeMC()
 
 bool SkywatcherAPI:: InitMount(bool recover)
 {
-     //add a check here for UDP connection
 
-        //tty_set_skywatcher_udp_format(1);
-        MYDEBUG(DBG_SCOPE, "InitMount");
+    MYDEBUG(DBG_SCOPE, "InitMount");
+
+    if (!GetMotorBoardVersion(AXIS1))
+             return false;
+
+        MountCode = MCVersion & 0xFF;
 
         // add checks for EQ mode or AZ Mode
 
         CheckIfDCMotor();
-        InquireFeatures();
+        //InquireFeatures();
 
-        if (!GetMotorBoardVersion(AXIS1))
-        return false;
-
-        MountCode = MCVersion & 0xFF;
 
     // Disable EQ mounts
-//    if (MountCode < 0x80)
-//        return false;
+    //    if (MountCode < 0x80)
+    //        return false;
+
+        if(IsAZGTIMount()){
+            IsDCMotor = true;
+        }
 
     //// NOTE: Simulator settings, Mount dependent Settings
 
@@ -592,6 +640,14 @@ long SkywatcherAPI::RadiansPerSecondToClocksTicksPerMicrostep(AXISID Axis, doubl
 long SkywatcherAPI::RadiansToMicrosteps(AXISID Axis, double AngleInRadians)
 {
     return (long)(AngleInRadians * MicrostepsPerRadian[(int)Axis]);
+}
+
+bool SkywatcherAPI::SetGuideSpeed(AXISID Axis, char speed)
+{
+    MYDEBUG(DBG_SCOPE, "SetGuideSpeed");
+    std::string Parameters, Response;
+    Parameters.push_back(speed);
+    return TalkWithAxis(Axis, 'P', Parameters, Response);
 }
 
 bool SkywatcherAPI::SetEncoder(AXISID Axis, long Microsteps)
@@ -1058,4 +1114,18 @@ void SkywatcherAPI::StartDETracking(double trackspeed)
     }
     else
         SlowStop(AXIS2);
+}
+
+
+void SkywatcherAPI::StartRAGuiding(char  trackspeed)
+{
+
+    SetGuideSpeed(AXIS1,trackspeed);
+}
+
+
+void SkywatcherAPI::StartDEGuiding(char  trackspeed)
+{
+
+    SetGuideSpeed(AXIS2,trackspeed);
 }

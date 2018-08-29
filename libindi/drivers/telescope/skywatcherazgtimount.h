@@ -38,6 +38,8 @@ public:
 
 
     bool startTracking();
+    bool startGuiding();
+
     double GetRATrackRate();
     double GetDETrackRate();
     double GetSlewRate();
@@ -179,7 +181,7 @@ private:
 
     // A switch for track positions
     ISwitch TrackModeS[3];
-    ISwitchVectorProperty TrackModeSSP;
+    ISwitchVectorProperty TrackModeSP;
 
     // Tracking
     ln_equ_posn CurrentTrackingTarget { 0, 0 };

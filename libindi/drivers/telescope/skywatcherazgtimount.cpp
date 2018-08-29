@@ -85,7 +85,7 @@ SkywatcherAZGTIMount::SkywatcherAZGTIMount() : TrackLogFileName(GetHomeDirectory
     // Set up the logging pointer in SkyWatcherAPI
     pChildTelescope  = this;
     SetTelescopeCapability(TELESCOPE_CAN_PARK | TELESCOPE_CAN_SYNC | TELESCOPE_CAN_GOTO | TELESCOPE_CAN_ABORT |TELESCOPE_HAS_TRACK_MODE | TELESCOPE_CAN_CONTROL_TRACK
-                               |TELESCOPE_HAS_TIME |TELESCOPE_HAS_PIER_SIDE,
+                               |TELESCOPE_HAS_TIME |TELESCOPE_HAS_LOCATION|TELESCOPE_HAS_PIER_SIDE,
                            SLEWMODES);
     std::remove(TrackLogFileName.c_str());
 }
@@ -126,7 +126,6 @@ bool SkywatcherAZGTIMount::Connect()
     LOG_DEBUG("SkywatcherAZGTIMount::Connect");
 
     addAuxControls();
-    addDebugControl();
 
     if (isConnected())
         return true;
@@ -136,6 +135,7 @@ bool SkywatcherAZGTIMount::Connect()
     if (Ret && getActiveConnection()->type() == Connection::Interface::CONNECTION_TCP)
     {
 
+        //Add check if its UDP. Do we need to , since this works only in UDP now ?
 
         tty_set_skywatcher_udp_format(1);
         PortFD = tcpConnection->getPortFD();
@@ -145,7 +145,17 @@ bool SkywatcherAZGTIMount::Connect()
         DEBUGF(DBG_SCOPE, "SkywatcherAZGTIMount initMount - Result: %d", initMountFromEQ);
 
 
+//       if(startTracking())
+//           TrackState = SCOPE_TRACKING;
+
+        // not sure why this is required, but this is what the synscan pro app does.
+
+        TurnRAEncoder(false);
+        TurnDEEncoder(false);
+
         startTracking();
+
+
     }
     return Ret;
 }
@@ -359,8 +369,8 @@ bool SkywatcherAZGTIMount::initProperties()
     // Alt rate: 0.72, Az rate: 0.72, timeout: 1000 msec
     // For Skywatcher Merlin:
     // Alt rate: 0.64, Az rate: 0.64, timeout: 1000 msec
-    IUFillNumber(&TrackingValuesN[0], "TRACKING_RATE_ALT", "rate (Alt)", "%1.3f", 0.001, 10.0, 0.000001, 0.64);
-    IUFillNumber(&TrackingValuesN[1], "TRACKING_RATE_AZ", "rate (Az)", "%1.3f", 0.001, 10.0, 0.000001, 0.64);
+    IUFillNumber(&TrackingValuesN[0], "TRACKING_RATE_ALT", "rate (Alt)", "%1.3f", 0.001, 10.0, 0.000001, 1.00);
+    IUFillNumber(&TrackingValuesN[1], "TRACKING_RATE_AZ", "rate (Az)", "%1.3f", 0.001, 10.0, 0.000001, 1.00);
     IUFillNumber(&TrackingValuesN[2], "TRACKING_TIMEOUT", "msec (period)", "%1.3f", 0.001, 10000.0, 0.000001, 1000.0);
     IUFillNumberVector(&TrackingValuesNP, TrackingValuesN, 3, getDeviceName(), "TRACKING_VALUES", "Tracking Values", MOTION_TAB,
                        IP_RW, 60, IPS_IDLE);
@@ -391,11 +401,16 @@ bool SkywatcherAZGTIMount::initProperties()
     initGuiderProperties(getDeviceName(), GUIDE_TAB);
     setDriverInterface(getDriverInterface() | GUIDER_INTERFACE);
 
-    IUFillSwitch(&TrackModeS[TRACK_SIDEREAL], "TRACK_SIDEREAL", "Sidereal", ISS_ON);
-    IUFillSwitch(&TrackModeS[TRACK_LUNAR], "TRACK_LUNAR", "Lunar", ISS_OFF);
-    IUFillSwitch(&TrackModeS[TRACK_SOLAR], "TRACK_SOLAR", "Solar", ISS_OFF);
-    IUFillSwitchVector(&TrackModeSSP, TrackModeS, 4, getDeviceName(), "TRACK_MODE", "Tracking Mode",
-                       MOTION_TAB, IP_RW, ISR_ATMOST1, 60, IPS_IDLE);
+    //Track MODE
+    IUFillSwitch(&TrackModeS[0], "SIDEREAL", "Sidereal", ISS_ON);
+    IUFillSwitch(&TrackModeS[1], "LUNAR", "Lunar", ISS_OFF);
+    IUFillSwitch(&TrackModeS[2], "SOLAR", "Solar", ISS_OFF);
+    IUFillSwitchVector(&TrackModeSP, TrackModeS, NARRAY(TrackModeS), getDeviceName(), "TRACK_MODE", "Track Mode", MOTION_TAB,
+                       IP_RW, ISR_ATMOST1, 60, IPS_IDLE);
+
+    //TurnRAEncoder(false);
+    //TurnDEEncoder(false);
+
     return true;
 }
 
@@ -427,7 +442,7 @@ void SkywatcherAZGTIMount::ISGetProperties(const char *dev)
         defineSwitch(&ParkMovementDirectionSP);
         defineSwitch(&ParkPositionSP);
         defineSwitch(&UnparkPositionSP);
-        defineSwitch(&TrackModeSSP);
+        defineSwitch(&TrackModeSP);
         defineNumber(&GuideNSNP);
         defineNumber(&GuideWENP);
     }
@@ -991,7 +1006,7 @@ bool SkywatcherAZGTIMount::saveConfigItems(FILE *fp)
     IUSaveConfigSwitch(fp, &ParkMovementDirectionSP);
     IUSaveConfigSwitch(fp, &ParkPositionSP);
     IUSaveConfigSwitch(fp, &UnparkPositionSP);
-    IUSaveConfigSwitch(fp, &TrackModeSSP);
+    IUSaveConfigSwitch(fp, &TrackModeSP);
 
     return INDI::Telescope::saveConfigItems(fp);
 }
@@ -1280,7 +1295,7 @@ bool SkywatcherAZGTIMount::updateProperties()
         defineSwitch(&ParkMovementDirectionSP);
         defineSwitch(&ParkPositionSP);
         defineSwitch(&UnparkPositionSP);
-        defineSwitch(&TrackModeSSP);
+        defineSwitch(&TrackModeSP);
 
         defineNumber(&GuideNSNP);
         defineNumber(&GuideWENP);
@@ -1655,23 +1670,25 @@ bool SkywatcherAZGTIMount::startTracking(){
 
     StartRATracking(GetRATrackRate());
     StartDETracking(GetDETrackRate());
+
+    return true;
 }
 double SkywatcherAZGTIMount::GetRATrackRate()
 {
     double rate = 0.0;
     ISwitch *sw;
-    sw = IUFindOnSwitch(&TrackModeSSP);
+    sw = IUFindOnSwitch(&TrackModeSP);
     if (!sw)
         return 0.0;
-    if (!strcmp(sw->name, "TRACK_SIDEREAL"))
+    if (!strcmp(sw->name, "SIDEREAL"))
     {
         rate = TRACKRATE_SIDEREAL;
     }
-    else if (!strcmp(sw->name, "TRACK_LUNAR"))
+    else if (!strcmp(sw->name, "LUNAR"))
     {
         rate = TRACKRATE_LUNAR;
     }
-    else if (!strcmp(sw->name, "TRACK_SOLAR"))
+    else if (!strcmp(sw->name, "SOLAR"))
     {
         rate = TRACKRATE_SOLAR;
     }
@@ -1686,24 +1703,34 @@ double SkywatcherAZGTIMount::GetDETrackRate()
 {
     double rate = 0.0;
     ISwitch *sw;
-    sw = IUFindOnSwitch(&TrackModeSSP);
+    sw = IUFindOnSwitch(&TrackModeSP);
     if (!sw)
         return 0.0;
-    if (!strcmp(sw->name, "TRACK_SIDEREAL"))
+    if (!strcmp(sw->name, "SIDEREAL"))
     {
-        rate = TRACKRATE_SIDEREAL;
+        rate = 0.0;
     }
-    else if (!strcmp(sw->name, "TRACK_LUNAR"))
+    else if (!strcmp(sw->name, "LUNAR"))
     {
-         rate = TRACKRATE_LUNAR;
+         rate = 0.0;
     }
-    else if (!strcmp(sw->name, "TRACK_SOLAR"))
+    else if (!strcmp(sw->name, "SOLAR"))
     {
-        rate = TRACKRATE_SOLAR;
+        rate = 0.0;
     }
     else
         return 0.0;
 //    if (DEInverted)
 //        rate = -rate;
     return rate;
+}
+
+bool SkywatcherAZGTIMount::startGuiding(){
+
+// guide with 0.5x
+
+    StartRAGuiding('2');
+    StartDEGuiding('2');
+
+    return true;
 }

@@ -18,6 +18,8 @@ class SkywatcherAZGTIMount:public SkywatcherAPI,
 public:
     SkywatcherAZGTIMount();
 
+
+    int myFD=-1;
     virtual ~SkywatcherAZGTIMount() = default;
 
     //  overrides of base class virtual functions
@@ -49,6 +51,9 @@ public:
 
     virtual bool Park() override;
     virtual bool UnPark() override;
+    virtual bool SetCurrentPark() override;
+    virtual bool SetDefaultPark() override;
+
     virtual bool ReadScopeStatus() override;
     virtual bool saveConfigItems(FILE *fp) override;
     virtual bool Sync(double ra, double dec) override;
@@ -64,18 +69,26 @@ private:
 
     void ResetGuidePulses();
     void UpdateScopeConfigSwitch();
+
     // Overrides for the pure virtual functions in SkyWatcherAPI
 
     virtual int skywatcher_tty_read(int fd, char *buf, int nbytes, int timeout, int *nbytes_read) override;
     virtual int skywatcher_tty_write(int fd, const char *buffer, int nbytes, int *nbytes_written) override;
+
+    virtual int skywatcher_azgti_Write(int fd, const char *buffer,int *nbytes_written);
+    virtual int skywatcher_azgti_Read(int fd,char *buf,int *nbytes_read);
+
 
     void UpdateDetailedMountInformation(bool InformClient);
     ln_hrz_posn GetAltAzPosition(double ra, double dec, double offset_in_sec = 0);
     ln_equ_posn GetRaDecPosition(double alt, double az);
     void LogMessage(const char* format, ...);
 
-    // Properties
+    void detectScope();
+    void setUdpFd(int fd);
 
+    // Properties
+    int NumPark { 0 };
     static constexpr const char *DetailedMountInfoPage { "Detailed Mount Information" };
     enum
     {
@@ -202,5 +215,6 @@ private:
     bool RecoverAfterReconnection { false };
     bool VerboseScopeStatus { false };
 
+    struct addrinfo *serverInfo;
     std::vector<GuidingPulse> GuidingPulses;
 };

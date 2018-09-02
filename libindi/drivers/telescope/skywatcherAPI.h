@@ -284,6 +284,7 @@ class SkywatcherAPI
     bool SetGuideSpeed(AXISID Axis,char trackspeed);
     void InquireFeatures();
     void tty_set_skywatcher_udp_format(int udpvalue);
+    void   setup_Mount(int setUpValue);
     // Skywatcher mount status variables
     unsigned long MCVersion { 0 }; // Motor control board firmware version
 

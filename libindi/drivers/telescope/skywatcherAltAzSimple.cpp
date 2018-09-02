@@ -844,73 +844,26 @@ bool SkywatcherAltAzSimple::Park()
 bool SkywatcherAltAzSimple::UnPark()
 {
     DEBUG(DBG_SCOPE, "SkywatcherAltAzSimple::UnPark");
-
-    ParkPosition_t TargetPosition   = PARK_NORTH;
-    ParkDirection_t TargetDirection = PARK_COUNTERCLOCKWISE;
-    double DeltaAlt                 = 0;
-    double DeltaAz                  = 0;
-
-    // Determinate the target position and direction
-    if (IUFindSwitch(&UnparkPositionSP, "UNPARK_NORTH") != nullptr &&
-        IUFindSwitch(&UnparkPositionSP, "UNPARK_NORTH")->s == ISS_ON)
-    {
-        TargetPosition = PARK_NORTH;
-    }
-    if (IUFindSwitch(&UnparkPositionSP, "UNPARK_EAST") != nullptr &&
-        IUFindSwitch(&UnparkPositionSP, "UNPARK_EAST")->s == ISS_ON)
-    {
-        TargetPosition = PARK_EAST;
-    }
-    if (IUFindSwitch(&UnparkPositionSP, "UNPARK_SOUTH") != nullptr &&
-        IUFindSwitch(&UnparkPositionSP, "UNPARK_SOUTH")->s == ISS_ON)
-    {
-        TargetPosition = PARK_SOUTH;
-    }
-    if (IUFindSwitch(&UnparkPositionSP, "UNPARK_WEST") != nullptr &&
-        IUFindSwitch(&UnparkPositionSP, "UNPARK_WEST")->s == ISS_ON)
-    {
-        TargetPosition = PARK_WEST;
-    }
-
-    // Note: The reverse direction is used for unparking.
-    if (IUFindSwitch(&ParkMovementDirectionSP, "PMD_COUNTERCLOCKWISE") != nullptr &&
-        IUFindSwitch(&ParkMovementDirectionSP, "PMD_COUNTERCLOCKWISE")->s == ISS_ON)
-    {
-        TargetDirection = PARK_CLOCKWISE;
-    }
-    if (IUFindSwitch(&ParkMovementDirectionSP, "PMD_CLOCKWISE") != nullptr &&
-        IUFindSwitch(&ParkMovementDirectionSP, "PMD_CLOCKWISE")->s == ISS_ON)
-    {
-        TargetDirection = PARK_COUNTERCLOCKWISE;
-    }
-    DeltaAz = GetParkDeltaAz(TargetDirection, TargetPosition);
-    // Altitude 3360 points the telescope upwards
-    DeltaAlt = CurrentAltAz.alt - 3360;
-
-    // Move the telescope to the desired position
-    long AltitudeOffsetMicrosteps = DegreesToMicrosteps(AXIS2, DeltaAlt);
-    long AzimuthOffsetMicrosteps  = DegreesToMicrosteps(AXIS1, DeltaAz);
-
-    DEBUGF(DBG_SCOPE, "Unparking: Delta altitude %1.2f - delta azimuth %1.2f", DeltaAlt, DeltaAz);
-    DEBUGF(DBG_SCOPE, "Unparking: Altitude offset %ld microsteps Azimuth offset %ld microsteps",
-           AltitudeOffsetMicrosteps, AzimuthOffsetMicrosteps);
-
-    if (IUFindSwitch(&SlewModesSP, "SLEW_NORMAL")->s == ISS_ON)
-    {
-        SilentSlewMode = false;
-    }
-    else
-    {
-        SilentSlewMode = true;
-    }
-    SlewTo(AXIS1, AzimuthOffsetMicrosteps);
-    SlewTo(AXIS2, AltitudeOffsetMicrosteps);
-
     SetParked(false);
-    TrackState = SCOPE_SLEWING;
+    NumPark = 0;
     return true;
 }
 
+bool SkywatcherAltAzSimple::SetCurrentPark()
+{
+    LOG_INFO("Setting arbitrary park positions is not supported yet.");
+    return false;
+}
+
+bool SkywatcherAltAzSimple::SetDefaultPark()
+{
+    // By default az to north, and alt to pole
+    LOG_DEBUG("Setting Park Data to Default.");
+    SetAxis1Park(0);
+    SetAxis2Park(90);
+
+    return true;
+}
 bool SkywatcherAltAzSimple::ReadScopeStatus()
 {
 //    DEBUG(DBG_SCOPE, "SkywatcherAltAzSimple::ReadScopeStatus");

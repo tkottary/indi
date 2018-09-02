@@ -23,9 +23,20 @@
 #include <termios.h>
 #include "indicom.h"
 #include <string.h>
-#define AZGTI_TIMEOUT            1
+#include <unistd.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#define AZGTI_TIMEOUT                  1
+#define AZGTI_TIMEOUT_SETUP            1
 
 int ttySkywatcherUdpFormat = 0;
+int setupMount = 0;
+
+void SkywatcherAPI::setup_Mount(int setUpValue)
+{
+    setupMount = setUpValue;
+}
 
 void SkywatcherAPI::tty_set_skywatcher_udp_format(int enabled)
 {
@@ -126,7 +137,6 @@ unsigned long SkywatcherAPI::Highstr2long(std::string &String)
     std::string SendBuffer;
 
     SendBuffer.push_back(':');
-    //SendBuffer.push_back(':');
     SendBuffer.push_back('\r');
     int  errcode = 0;
     char errmsg[MAXRBUF];
@@ -315,6 +325,8 @@ double SkywatcherAPI::get_max_rate()
 
 bool SkywatcherAPI::GetMicrostepsPerRevolution(AXISID Axis)
 {
+
+    //nanosleep(&timeout, nullptr);
     MYDEBUG(DBG_SCOPE, "GetMicrostepsPerRevolution");
     std::string Parameters, Response;
 
@@ -362,7 +374,7 @@ bool SkywatcherAPI::GetMicrostepsPerWormRevolution(AXISID Axis)
 
 bool SkywatcherAPI::GetMotorBoardVersion(AXISID Axis)
 {
-//    MYDEBUG(DBG_SCOPE, "GetMotorBoardVersion");
+    MYDEBUG(DBG_SCOPE, "GetMotorBoardVersion");
     std::string Parameters, Response;
 
     if (!TalkWithAxis(Axis, 'e', Parameters, Response))
@@ -370,8 +382,10 @@ bool SkywatcherAPI::GetMotorBoardVersion(AXISID Axis)
 
     unsigned long tmpMCVersion = BCDstr2long(Response);
 
-    MCVersion = ((tmpMCVersion & 0xFF) << 16) | ((tmpMCVersion & 0xFF00)) | ((tmpMCVersion & 0xFF0000) >> 16);
-    return true;
+     MCVersion = ((tmpMCVersion & 0xFF) << 16) | ((tmpMCVersion & 0xFF00)) | ((tmpMCVersion & 0xFF0000) >> 16);
+     MountCode = MCVersion & 0xFF;
+     MYDEBUGF(DBG_SCOPE, "GetMotorBoardVersion MCVersion %ld MountCode %ld", MCVersion, MountCode);
+     return true;
 }
 
 SkywatcherAPI::PositiveRotationSense_t SkywatcherAPI::GetPositiveRotationDirection(AXISID Axis)
@@ -473,16 +487,13 @@ bool SkywatcherAPI::InitializeMC()
 
 bool SkywatcherAPI:: InitMount(bool recover)
 {
-
-    MYDEBUG(DBG_SCOPE, "InitMount");
+    //setup_Mount(1);
+        MYDEBUG(DBG_SCOPE, "InitMount2");
 
     if (!GetMotorBoardVersion(AXIS1))
-             return false;
+             //return false;
 
         MountCode = MCVersion & 0xFF;
-
-        // add checks for EQ mode or AZ Mode
-
         CheckIfDCMotor();
         //InquireFeatures();
 
@@ -497,23 +508,19 @@ bool SkywatcherAPI:: InitMount(bool recover)
 
     //// NOTE: Simulator settings, Mount dependent Settings
 
-    // Inquire Gear Rate
-    if (!GetMicrostepsPerRevolution(AXIS1))
-        return false;
-    if (!GetMicrostepsPerRevolution(AXIS2))
-        return false;
+        usleep(1000000);
+        // Inquire Gear Rate
+        GetMicrostepsPerRevolution(AXIS1);
+        GetMicrostepsPerRevolution(AXIS2);
 
-    // Get stepper clock frequency
-    if (!GetStepperClockFrequency(AXIS1))
-        return false;
-    if (!GetStepperClockFrequency(AXIS2))
-        return false;
+        // Get stepper clock frequency
+        GetStepperClockFrequency(AXIS1);
+        GetStepperClockFrequency(AXIS2);
 
-    // Inquire motor high speed ratio
-    if (!GetHighSpeedRatio(AXIS1))
-        return false;
-    if (!GetHighSpeedRatio(AXIS2))
-        return false;
+
+        // Inquire motor high speed ratio
+        GetHighSpeedRatio(AXIS1);
+        GetHighSpeedRatio(AXIS2);
 
     // Inquire PEC period
     // DC motor controller does not support PEC
@@ -524,11 +531,11 @@ bool SkywatcherAPI:: InitMount(bool recover)
     }
 
     // Inquire Axis Position
-    if (!GetEncoder(AXIS1))
-        return false;
-    if (!GetEncoder(AXIS2))
-        return false;
-    MYDEBUGF(DBG_SCOPE, "Encoders before init Axis1 %ld Axis2 %ld", CurrentEncoders[AXIS1], CurrentEncoders[AXIS2]);
+        GetEncoder(AXIS1);
+        GetEncoder(AXIS2);
+        //return false;
+
+        MYDEBUGF(DBG_SCOPE, "Encoders before init Axis1 %ld Axis2 %ld", CurrentEncoders[AXIS1], CurrentEncoders[AXIS2]);
 
     // Set initial axis positions
     // These are used to define the arbitrary zero position vector for the axis
@@ -541,14 +548,18 @@ bool SkywatcherAPI:: InitMount(bool recover)
     }
 
     if (!InitializeMC())
-        return false;
+        //return false;
 
 
     // These two LowSpeedGotoMargin are calculate from slewing for 5 seconds in 128x sidereal rate
     LowSpeedGotoMargin[(int)AXIS1] = (long)(640 * SIDEREALRATE * MicrostepsPerRadian[(int)AXIS1]);
     LowSpeedGotoMargin[(int)AXIS2] = (long)(640 * SIDEREALRATE * MicrostepsPerRadian[(int)AXIS2]);
 
+    TurnRAEncoder(false);
+    TurnDEEncoder(false);
 
+
+    //setup_Mount(0);
     return true;
 }
 
@@ -879,8 +890,14 @@ bool SkywatcherAPI::StartMotion(AXISID Axis)
 
 bool SkywatcherAPI::TalkWithAxis(AXISID Axis, char Command, std::string &cmdDataStr, std::string &responseStr)
 {
-//    MYDEBUGF(DBG_SCOPE, "TalkWithAxis Axis %s Command %c Data (%s)", Axis == AXIS1 ? "AXIS1" : "AXIS2", Command,
-//             cmdDataStr.c_str());
+    //MYDEBUGF(DBG_SCOPE, "TalkWithAxis Axis %s Command %c Data (%s)", Axis == AXIS1 ? "AXIS1" : "AXIS2", Command,
+      //       cmdDataStr.c_str());
+    int udpTimeOutinSec =0;
+    if(setupMount==1){
+        udpTimeOutinSec =AZGTI_TIMEOUT_SETUP;
+    }else{
+        udpTimeOutinSec=AZGTI_TIMEOUT;
+    }
 
     int  nbytes_read    = 0;
     int  nbytes_written = 0;
@@ -895,12 +912,10 @@ bool SkywatcherAPI::TalkWithAxis(AXISID Axis, char Command, std::string &cmdData
     SendBuffer.push_back(Axis == AXIS1 ? '1' : '2');
     SendBuffer.append(cmdDataStr);
     SendBuffer.push_back('\r');
-
     if(ttySkywatcherUdpFormat == 0){
 
     skywatcher_tty_write(MyPortFD, SendBuffer.c_str(), SendBuffer.size(), &nbytes_written);
 
-    std::this_thread::sleep_for(std::chrono::milliseconds(5));
     while (!EndReading)
     {
         std::this_thread::sleep_for(std::chrono::milliseconds(5));
@@ -927,16 +942,27 @@ bool SkywatcherAPI::TalkWithAxis(AXISID Axis, char Command, std::string &cmdData
             responseStr.push_back(c);
     }
 
-    }else{
+    }else if(ttySkywatcherUdpFormat==1){
+
+
+        int sockbufsize = 2048;
+        timeval tv;
+        tv.tv_sec  = 0;
+        tv.tv_usec = 50000;
+        setsockopt(MyPortFD, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(struct timeval));
+        setsockopt(MyPortFD, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof(struct timeval));
+        setsockopt(MyPortFD, SOL_SOCKET, SO_RCVBUF,(char *)&sockbufsize,  (int)sizeof(sockbufsize));
+        setsockopt(MyPortFD, SOL_SOCKET, SO_SNDBUF,(char *)&sockbufsize,  (int)sizeof(sockbufsize));
 
             char cmd[11];
             int  errcode = 0;
             char errmsg[MAXRBUF];
-            char response[16];
+            //char response[16];
+            char response[2048];
                 memset(response, 0, sizeof(response));
                 snprintf(cmd, 11, "%s",SendBuffer.c_str());
 
-                MYDEBUGF(DBG_SCOPE, "TalkWithAxis comand is %s", cmd);
+                //MYDEBUGF(DBG_SCOPE, "TalkWithAxis comand is %s", cmd);
 
 
                 tcflush(MyPortFD, TCIFLUSH);
@@ -944,16 +970,16 @@ bool SkywatcherAPI::TalkWithAxis(AXISID Axis, char Command, std::string &cmdData
                 if ((errcode = tty_write(MyPortFD, cmd, strlen(cmd), &nbytes_written)) != TTY_OK)
                 {
                     tty_error_msg(errcode, errmsg, MAXRBUF);
-                    //MYDEBUGF(DBG_SCOPE, "TalkWithAxis Final Response (%s)", errmsg);
+                    MYDEBUGF(DBG_SCOPE, "TalkWithAxis tty_error_msg  %s", errmsg);
                     return false;
                 }
 
-            tty_read(MyPortFD, response, 9, AZGTI_TIMEOUT, &nbytes_read);
+            tty_read(MyPortFD, response, 9, udpTimeOutinSec, &nbytes_read);
 
 
             if (nbytes_read > 0)
             {
-                //MYDEBUGF(DBG_SCOPE, "TalkWithAxis Final Response before trimming (%s)", response);
+                //MYDEBUGF(DBG_SCOPE, "TalkWithAxis Final Response before trimming %s", response);
                 tcflush(MyPortFD, TCIFLUSH);
 
                 responseStr = response;
@@ -965,12 +991,29 @@ bool SkywatcherAPI::TalkWithAxis(AXISID Axis, char Command, std::string &cmdData
                         responseStr.erase(0, 1);
                         responseStr.erase(responseStr.size()-1);
                 }
-                MYDEBUGF(DBG_SCOPE, "TalkWithAxis Final Response %s", response);
+                //MYDEBUGF(DBG_SCOPE, "TalkWithAxis Final Response for %s is --->  %s", cmd,response);
                 return true;
+            }else{
+                MYDEBUG(DBG_SCOPE, "no response from mount");
+                //tty_read(MyPortFD, response, 9, 1.0, &nbytes_read);
             }
 
             return false;
 
+    }else{
+    char response[2048];
+    memset(response, 0, sizeof(response));
+        skywatcher_tty_write(MyPortFD, SendBuffer.c_str(), SendBuffer.size(), &nbytes_written);
+        int rc = skywatcher_tty_read(MyPortFD, response, 1, 10, &nbytes_read);
+       if(rc >1){
+        responseStr =response;
+        responseStr.erase(nbytes_read-2);
+       }else{
+
+           //may be retry?
+
+           return false;
+       }
     }
 
  return true;

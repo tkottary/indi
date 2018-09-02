@@ -28,7 +28,7 @@
 #include <cstdlib>
 #include <stdarg.h>
 #include <cstring>
-
+#include <netdb.h>
 #ifdef _WINDOWS
 #include <WinSock2.h>
 #include <windows.h>

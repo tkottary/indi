@@ -52,8 +52,12 @@ class SkywatcherAltAzSimple : public SkywatcherAPI,
     virtual bool MoveNS(INDI_DIR_NS dir, TelescopeMotionCommand command) override;
     virtual bool MoveWE(INDI_DIR_WE dir, TelescopeMotionCommand command) override;
     double GetParkDeltaAz(ParkDirection_t target_direction, ParkPosition_t target_position);
+
     virtual bool Park() override;
     virtual bool UnPark() override;
+    virtual  bool SetCurrentPark() override;
+    virtual  bool SetDefaultPark() override;
+
     virtual bool ReadScopeStatus() override;
     virtual bool saveConfigItems(FILE *fp) override;
     virtual bool Sync(double ra, double dec) override;
@@ -76,7 +80,7 @@ private:
     void LogMessage(const char* format, ...);
 
     // Properties
-
+    int NumPark { 0 };
     static constexpr const char *DetailedMountInfoPage { "Detailed Mount Information" };
     enum
     {

@@ -14,13 +14,20 @@
 #include <iostream>
 #include <thread>
 #include <termios.h>
-
+#include <cmath>
 #include <sys/socket.h>
+#include <unistd.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+
+#include <sys/types.h>
+#include <netdb.h>
 
 /* Preset Slew Speeds */
+#define AZGTIPORT 11880
 #define SLEWMODES 9
 double SlewSpeeds[SLEWMODES] = { 1.0, 2.0, 8.0, 16.0, 32.0, 200.0, 400.0, 600.0,800.0 };
-
+const int MSG_SIZE = 100;
 void ISPoll(void *p);
 
 // We declare an auto pointer to Synscan.
@@ -137,27 +144,73 @@ bool SkywatcherAZGTIMount::Connect()
 
         //Add check if its UDP. Do we need to , since this works only in UDP now ?
 
-        tty_set_skywatcher_udp_format(1);
+        tty_set_skywatcher_udp_format(2);
         PortFD = tcpConnection->getPortFD();
         SetSerialPort(tcpConnection->getPortFD());
+
+        detectScope();
 
         bool initMountFromEQ =  InitMount(RecoverAfterReconnection);
         DEBUGF(DBG_SCOPE, "SkywatcherAZGTIMount initMount - Result: %d", initMountFromEQ);
 
+        // not sure why this is required, but this is what the synscan pro app does
 
-//       if(startTracking())
-//           TrackState = SCOPE_TRACKING;
-
-        // not sure why this is required, but this is what the synscan pro app does.
-
-        TurnRAEncoder(false);
-        TurnDEEncoder(false);
-
-        startTracking();
-
-
-    }
+        if(MountCode>0)
+            startTracking();
+}
     return Ret;
+}
+
+
+void SkywatcherAZGTIMount::detectScope(){
+
+    int fd=-1;	/* our socket */
+    //int sockbufsize = 2048;
+
+    int status;
+    struct addrinfo hints;
+    //struct addrinfo *servinfo;  // will point to the results
+
+    timeval tv;
+    tv.tv_sec  = 2;
+    tv.tv_usec = 0;
+
+    /* fill in the server's address and data */
+
+
+    memset(&hints, 0, sizeof hints); // make sure the struct is empty
+    hints.ai_family = AF_UNSPEC;     // don't care IPv4 or IPv6
+    hints.ai_socktype = SOCK_DGRAM; // TCP stream sockets
+    hints.ai_flags = AI_PASSIVE;     // fill in my IP for me
+    hints.ai_protocol = IPPROTO_UDP;
+
+    //fix this hardcoding.
+
+    if ((status = getaddrinfo("192.168.4.1","11880", &hints, &serverInfo)) != 0) {
+        fprintf(stderr, "getaddrinfo error: %s\n", gai_strerror(status));
+        exit(1);
+    }
+
+    fd = socket(serverInfo->ai_family, serverInfo->ai_socktype, serverInfo->ai_protocol);
+    setUdpFd(fd);
+
+    int bindresult= bind(fd, serverInfo->ai_addr, serverInfo->ai_addrlen);
+
+    if (setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(struct timeval))<0){
+         DEBUG(DBG_SCOPE, "did not SO_RCVTIMEO ");
+    };
+
+    if (setsockopt(fd, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof(struct timeval))<0){
+         DEBUG(DBG_SCOPE, "did not SO_SNDTIMEO ");
+    };
+
+//    if (setsockopt(fd, SOL_SOCKET, SO_RCVBUF,(char *)&sockbufsize,  (int)sizeof(sockbufsize))<0){
+//         DEBUG(DBG_SCOPE, "did not SO_RCVBUF ");
+//    };
+//    if (setsockopt(fd, SOL_SOCKET, SO_SNDBUF,(char *)&sockbufsize,  (int)sizeof(sockbufsize))<0){
+//         DEBUG(DBG_SCOPE, "did not SO_SNDBUF ");
+//    };
+
 }
 const char *SkywatcherAZGTIMount::getDefaultName()
 {
@@ -266,6 +319,8 @@ bool SkywatcherAZGTIMount::initProperties()
     // Add default properties
     addDebugControl();
     addConfigurationControl();
+    //recheck
+    //InitMount(true);
 
     // Set up property variables
     IUFillText(&BasicMountInfo[MOTOR_CONTROL_FIRMWARE_VERSION], "MOTOR_CONTROL_FIRMWARE_VERSION",
@@ -856,76 +911,34 @@ bool SkywatcherAZGTIMount::Park()
     SlewTo(AXIS2, AltitudeOffsetMicrosteps);
 
     TrackState = SCOPE_PARKING;
+    if (NumPark == 0)
+    {
+        LOG_INFO("Parking Mount...");
+    }
     return true;
 }
 
 bool SkywatcherAZGTIMount::UnPark()
 {
-    DEBUG(DBG_SCOPE, "SkywatcherAZGTIMount::UnPark");
-
-    ParkPosition_t TargetPosition   = PARK_NORTH;
-    ParkDirection_t TargetDirection = PARK_COUNTERCLOCKWISE;
-    double DeltaAlt                 = 0;
-    double DeltaAz                  = 0;
-
-    // Determinate the target position and direction
-    if (IUFindSwitch(&UnparkPositionSP, "UNPARK_NORTH") != nullptr &&
-        IUFindSwitch(&UnparkPositionSP, "UNPARK_NORTH")->s == ISS_ON)
-    {
-        TargetPosition = PARK_NORTH;
-    }
-    if (IUFindSwitch(&UnparkPositionSP, "UNPARK_EAST") != nullptr &&
-        IUFindSwitch(&UnparkPositionSP, "UNPARK_EAST")->s == ISS_ON)
-    {
-        TargetPosition = PARK_EAST;
-    }
-    if (IUFindSwitch(&UnparkPositionSP, "UNPARK_SOUTH") != nullptr &&
-        IUFindSwitch(&UnparkPositionSP, "UNPARK_SOUTH")->s == ISS_ON)
-    {
-        TargetPosition = PARK_SOUTH;
-    }
-    if (IUFindSwitch(&UnparkPositionSP, "UNPARK_WEST") != nullptr &&
-        IUFindSwitch(&UnparkPositionSP, "UNPARK_WEST")->s == ISS_ON)
-    {
-        TargetPosition = PARK_WEST;
-    }
-
-    // Note: The reverse direction is used for unparking.
-    if (IUFindSwitch(&ParkMovementDirectionSP, "PMD_COUNTERCLOCKWISE") != nullptr &&
-        IUFindSwitch(&ParkMovementDirectionSP, "PMD_COUNTERCLOCKWISE")->s == ISS_ON)
-    {
-        TargetDirection = PARK_CLOCKWISE;
-    }
-    if (IUFindSwitch(&ParkMovementDirectionSP, "PMD_CLOCKWISE") != nullptr &&
-        IUFindSwitch(&ParkMovementDirectionSP, "PMD_CLOCKWISE")->s == ISS_ON)
-    {
-        TargetDirection = PARK_COUNTERCLOCKWISE;
-    }
-    DeltaAz = GetParkDeltaAz(TargetDirection, TargetPosition);
-    // Altitude 3360 points the telescope upwards
-    DeltaAlt = CurrentAltAz.alt - 3360;
-
-    // Move the telescope to the desired position
-    long AltitudeOffsetMicrosteps = DegreesToMicrosteps(AXIS2, DeltaAlt);
-    long AzimuthOffsetMicrosteps  = DegreesToMicrosteps(AXIS1, DeltaAz);
-
-    DEBUGF(DBG_SCOPE, "Unparking: Delta altitude %1.2f - delta azimuth %1.2f", DeltaAlt, DeltaAz);
-    DEBUGF(DBG_SCOPE, "Unparking: Altitude offset %ld microsteps Azimuth offset %ld microsteps",
-           AltitudeOffsetMicrosteps, AzimuthOffsetMicrosteps);
-
-    if (IUFindSwitch(&SlewModesSP, "SLEW_NORMAL")->s == ISS_ON)
-    {
-        SilentSlewMode = false;
-    }
-    else
-    {
-        SilentSlewMode = true;
-    }
-    SlewTo(AXIS1, AzimuthOffsetMicrosteps);
-    SlewTo(AXIS2, AltitudeOffsetMicrosteps);
-
+    DEBUG(DBG_SCOPE, "SkywatcherAltAzSimple::UnPark");
     SetParked(false);
-    TrackState = SCOPE_SLEWING;
+    NumPark = 0;
+    return true;
+}
+
+bool SkywatcherAZGTIMount::SetCurrentPark()
+{
+    LOG_INFO("Setting arbitrary park positions is not supported yet.");
+    return false;
+}
+
+bool SkywatcherAZGTIMount::SetDefaultPark()
+{
+    // By default az to north, and alt to pole
+    LOG_DEBUG("Setting Park Data to Default.");
+    SetAxis1Park(0);
+    SetAxis2Park(90);
+
     return true;
 }
 
@@ -1244,7 +1257,19 @@ void SkywatcherAZGTIMount::TimerHit()
             break;
         }
         break;
+        case SCOPE_PARKING:
+        {
 
+            if (NumPark++ < 2)
+                {
+                    Park();
+                 }
+            else
+            {
+                TrackState = SCOPE_PARKED;
+                SetParked(true);
+            }
+        }break;
         default:
             if (Slewing)
             {
@@ -1268,11 +1293,13 @@ void SkywatcherAZGTIMount::TimerHit()
 
 bool SkywatcherAZGTIMount::updateProperties()
 {
+
     INDI::Telescope::updateProperties();
 
     if (isConnected())
     {
         // Fill in any real values now available MCInit should have been called already
+
         UpdateDetailedMountInformation(false);
 
         // Define our connected only properties to the base driver
@@ -1380,14 +1407,70 @@ void SkywatcherAZGTIMount::ResetGuidePulses()
 
 int SkywatcherAZGTIMount::skywatcher_tty_read(int fd, char *buf, int nbytes, int timeout, int *nbytes_read)
 {
-
-    return tty_read(fd, buf, nbytes, timeout, nbytes_read);
+      return skywatcher_azgti_Read(myFD,buf,nbytes_read);
 }
 
 int SkywatcherAZGTIMount::skywatcher_tty_write(int fd, const char *buffer, int nbytes, int *nbytes_written)
 {
+    return skywatcher_azgti_Write(myFD,buffer,nbytes_written);
 
-    return tty_write(fd, buffer, nbytes, nbytes_written);
+}
+void SkywatcherAZGTIMount::setUdpFd(int fd){
+   myFD=fd;
+
+}
+
+int SkywatcherAZGTIMount::skywatcher_azgti_Write(int fd, const char *buffer, int *nbytes_written){
+
+    //struct addrinfo *servinfo =&serverInfo;  // will point to the results
+    //send the message to server
+     int bytesWritten = sendto(fd, buffer, strlen(buffer), 0, serverInfo->ai_addr, serverInfo->ai_addrlen) ;
+     *nbytes_written = bytesWritten;
+     DEBUGF(DBG_SCOPE, "bytesSent %d ", bytesWritten);
+}
+
+int SkywatcherAZGTIMount::skywatcher_azgti_Read(int fd,char *buf,int *nbytes_read){
+    struct sockaddr_storage addr;
+    socklen_t addrlen = sizeof(addr);
+    std::string responseString;
+
+    int BUFSIZE = 2048;
+    char responseStr[BUFSIZE]={0}; /* receive buffer */
+    tcflush(fd, TCIFLUSH);
+    memset(responseStr, 0, BUFSIZE);
+
+    //read the response from server
+    int bytesReceived= -2;
+    while (true){
+        bytesReceived=recvfrom(fd, responseStr, BUFSIZE, 0, serverInfo->ai_addr, &addrlen);
+        if (bytesReceived== -1){
+
+            DEBUG(DBG_SCOPE, "recvfrom threw -1 error ");
+            break;
+        }else if(bytesReceived>0) {
+
+
+            *nbytes_read=bytesReceived;
+
+            responseString=responseStr;
+
+            //handle mount response here:
+
+            if (responseString[0] == '!')
+                {
+                    MYDEBUG(DBG_SCOPE, "Bad reponse from mount");
+                    return 1;
+                }else{
+                        responseString.erase(0, 1);
+                        responseString.erase(bytesReceived-2);
+                }
+                memcpy(buf,responseString.c_str(),sizeof(responseString));
+                return bytesReceived;
+
+        }
+    }
+     DEBUGF(DBG_SCOPE, "bytesReceived %d ", bytesReceived);
+     return bytesReceived;
 }
 
 void SkywatcherAZGTIMount::UpdateDetailedMountInformation(bool InformClient)

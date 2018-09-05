@@ -1,13 +1,8 @@
 #include "skywatcherazgtimount.h"
 #include "indicom.h"
-#include "connectionplugins/connectionserial.h"
 #include "connectionplugins/connectiontcp.h"
-
 #include <libnova/transform.h>
-// libnova specifies round() on old systems and it collides with the new gcc 5.x/6.x headers
-#define HAVE_ROUND
 #include <libnova/utility.h>
-
 #include <chrono>
 #include <cstring>
 #include <fstream>
@@ -19,16 +14,21 @@
 #include <unistd.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
-
 #include <sys/types.h>
 #include <netdb.h>
+#include <alignment/DriverCommon.h> // For DBG_ALIGNMENT
+#include "alignment/AlignmentSubsystemForDrivers.h"
 
+// libnova specifies round() on old systems and it collides with the new gcc 5.x/6.x headers
+#define HAVE_ROUND
 /* Preset Slew Speeds */
 #define AZGTIPORT 11880
 #define SLEWMODES 9
 double SlewSpeeds[SLEWMODES] = { 1.0, 2.0, 8.0, 16.0, 32.0, 200.0, 400.0, 600.0,800.0 };
 const int MSG_SIZE = 100;
 void ISPoll(void *p);
+
+using namespace INDI::AlignmentSubsystem;
 
 // We declare an auto pointer to Synscan.
 static std::unique_ptr<SkywatcherAZGTIMount> skywatcherAZGTIMount(new SkywatcherAZGTIMount());
@@ -87,14 +87,14 @@ void ISSnoopDevice(XMLEle *root)
     INDI_UNUSED(root);
 }
 
-SkywatcherAZGTIMount::SkywatcherAZGTIMount() : TrackLogFileName(GetHomeDirectory()+"/.indi/sw_mount_track_log.txt")
+SkywatcherAZGTIMount::SkywatcherAZGTIMount()
 {
     // Set up the logging pointer in SkyWatcherAPI
     pChildTelescope  = this;
     SetTelescopeCapability(TELESCOPE_CAN_PARK | TELESCOPE_CAN_SYNC | TELESCOPE_CAN_GOTO | TELESCOPE_CAN_ABORT |TELESCOPE_HAS_TRACK_MODE | TELESCOPE_CAN_CONTROL_TRACK
                                |TELESCOPE_HAS_TIME |TELESCOPE_HAS_LOCATION|TELESCOPE_HAS_PIER_SIDE,
                            SLEWMODES);
-    std::remove(TrackLogFileName.c_str());
+
 }
 
 bool SkywatcherAZGTIMount::Abort()
@@ -319,8 +319,10 @@ bool SkywatcherAZGTIMount::initProperties()
     // Add default properties
     addDebugControl();
     addConfigurationControl();
-    //recheck
-    //InitMount(true);
+
+    // Add alignment properties
+
+    InitAlignmentProperties(this);
 
     // Set up property variables
     IUFillText(&BasicMountInfo[MOTOR_CONTROL_FIRMWARE_VERSION], "MOTOR_CONTROL_FIRMWARE_VERSION",
@@ -576,6 +578,9 @@ bool SkywatcherAZGTIMount::ISNewSwitch(const char *dev, const char *name, ISStat
     if (dev != nullptr && strcmp(dev, getDeviceName()) == 0)
     {
         // It is for us
+
+        // Process alignment properties
+        ProcessAlignmentSwitchProperties(this, name, states, names, n);
     }
     // Pass it up the chain
     return INDI::Telescope::ISNewSwitch(dev, name, states, names, n);
@@ -1358,10 +1363,15 @@ IPState SkywatcherAZGTIMount::GuideNorth(uint32_t ms)
 {
     GuidingPulse Pulse;
 
-    LogMessage("GUIDE NORTH: %1.4f", ms);
-    Pulse.DeltaAz = 0;
-    Pulse.DeltaAlt = ms;
+    TimeoutDuration = 250;
+    CalculateGuidePulses();
+    Pulse.DeltaAz = NorthPulse.DeltaAz;
+    Pulse.DeltaAlt = NorthPulse.DeltaAlt;
+    Pulse.Duration = (int)ms;
+    Pulse.OriginalDuration = (int)ms;
     GuidingPulses.push_back(Pulse);
+//    IDMessage(nullptr, "GUIDE NORTH: %1.2f msec - deltaalt: %1.6f deltaaz: %1.6f", ms,
+//              Pulse.DeltaAlt, Pulse.DeltaAz);
     return IPS_OK;
 }
 
@@ -1369,10 +1379,15 @@ IPState SkywatcherAZGTIMount::GuideSouth(uint32_t ms)
 {
     GuidingPulse Pulse;
 
-    LogMessage("GUIDE SOUTH: %1.4f", ms);
-    Pulse.DeltaAz = 0;
-    Pulse.DeltaAlt = -ms;
+    TimeoutDuration = 250;
+    CalculateGuidePulses();
+    Pulse.DeltaAz = -NorthPulse.DeltaAz;
+    Pulse.DeltaAlt = -NorthPulse.DeltaAlt;
+    Pulse.Duration = (int)ms;
+    Pulse.OriginalDuration = (int)ms;
     GuidingPulses.push_back(Pulse);
+//    IDMessage(nullptr, "GUIDE SOUTH: %1.2f msec - deltaalt: %1.6f deltaaz: %1.6f", ms,
+//              Pulse.DeltaAlt, Pulse.DeltaAz);
     return IPS_OK;
 }
 
@@ -1380,10 +1395,15 @@ IPState SkywatcherAZGTIMount::GuideWest(uint32_t ms)
 {
     GuidingPulse Pulse;
 
-    LogMessage("GUIDE WEST: %1.4f", ms);
-    Pulse.DeltaAz = ms;
-    Pulse.DeltaAlt = 0;
+    TimeoutDuration = 250;
+    CalculateGuidePulses();
+    Pulse.DeltaAz = WestPulse.DeltaAz;
+    Pulse.DeltaAlt = WestPulse.DeltaAlt;
+    Pulse.Duration = (int)ms;
+    Pulse.OriginalDuration = (int)ms;
     GuidingPulses.push_back(Pulse);
+//    IDMessage(nullptr, "GUIDE WEST: %1.2f msec - deltaalt: %1.6f deltaaz: %1.6f", ms,
+//              Pulse.DeltaAlt, Pulse.DeltaAz);
     return IPS_OK;
 }
 
@@ -1391,18 +1411,59 @@ IPState SkywatcherAZGTIMount::GuideEast(uint32_t ms)
 {
     GuidingPulse Pulse;
 
-    LogMessage("GUIDE EAST: %1.4f", ms);
-    Pulse.DeltaAz = -ms;
-    Pulse.DeltaAlt = 0;
+    TimeoutDuration = 250;
+    CalculateGuidePulses();
+    Pulse.DeltaAz = -WestPulse.DeltaAz;
+    Pulse.DeltaAlt = -WestPulse.DeltaAlt;
+    Pulse.Duration = (int)ms;
+    Pulse.OriginalDuration = (int)ms;
     GuidingPulses.push_back(Pulse);
+//    IDMessage(nullptr, "GUIDE EAST: %1.2f msec - deltaalt: %1.6f deltaaz: %1.6f", ms,
+//              Pulse.DeltaAlt, Pulse.DeltaAz);
     return IPS_OK;
 }
 
+void SkywatcherAZGTIMount::CalculateGuidePulses()
+{
+    if (NorthPulse.Duration != 0 || WestPulse.Duration != 0)
+        return;
+
+    // Calculate the west reference delta
+    // Note: The RA is multiplied by 3.75 (90/24) to be more comparable with DEC values.
+    const double WestRate = IUFindNumber(&GuidingRatesNP, "GUIDERA_RATE")->value / 10*-(double)1 / 60 / 60*3.75 / 100;
+
+    ConvertGuideCorrection(WestRate, 0, WestPulse.DeltaAlt, WestPulse.DeltaAz);
+    WestPulse.Duration = 1;
+
+    // Calculate the north reference delta
+    // Note: By some reason, it must be multiplied by 100 to match with the RA values.
+    const double NorthRate = IUFindNumber(&GuidingRatesNP, "GUIDEDEC_RATE")->value / 10*(double)1 / 60 / 60*100 / 100;
+
+    ConvertGuideCorrection(0, NorthRate, NorthPulse.DeltaAlt, NorthPulse.DeltaAz);
+    NorthPulse.Duration = 1;
+}
+
+void SkywatcherAZGTIMount::ConvertGuideCorrection(double delta_ra, double delta_dec, double &delta_alt, double &delta_az)
+{
+    ln_hrz_posn OldAltAz { 0, 0 };
+    ln_hrz_posn NewAltAz { 0, 0 };
+    TelescopeDirectionVector OldTDV;
+    TelescopeDirectionVector NewTDV;
+
+    TransformCelestialToTelescope(CurrentTrackingTarget.ra, CurrentTrackingTarget.dec, 0.0, OldTDV);
+    AltitudeAzimuthFromTelescopeDirectionVector(OldTDV, OldAltAz);
+    TransformCelestialToTelescope(CurrentTrackingTarget.ra+delta_ra, CurrentTrackingTarget.dec+delta_dec, 0.0, NewTDV);
+    AltitudeAzimuthFromTelescopeDirectionVector(NewTDV, NewAltAz);
+    delta_alt = NewAltAz.alt-OldAltAz.alt;
+    delta_az = NewAltAz.az-OldAltAz.az;
+}
 // Private methods
 
 void SkywatcherAZGTIMount::ResetGuidePulses()
 {
     GuidingPulses.clear();
+    NorthPulse.Duration = 0;
+    WestPulse.Duration = 0;
 }
 
 int SkywatcherAZGTIMount::skywatcher_tty_read(int fd, char *buf, int nbytes, int timeout, int *nbytes_read)

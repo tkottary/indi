@@ -576,7 +576,7 @@ SET(skywatcherazgti_SRC
     ${CMAKE_CURRENT_SOURCE_DIR}/drivers/telescope/skywatcherAPI.cpp)
 
 add_executable(indi_skywatcherazgti_telescope ${skywatcherazgti_SRC})
-target_link_libraries(indi_skywatcherazgti_telescope indidriver)
+target_link_libraries(indi_skywatcherazgti_telescope indidriver AlignmentDriver)
 
 install(TARGETS indi_skywatcherazgti_telescope RUNTIME DESTINATION bin)
 

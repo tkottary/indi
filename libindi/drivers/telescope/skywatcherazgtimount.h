@@ -1,25 +1,27 @@
+#pragma once
+#include "skywatcherAPI.h"
 #include "inditelescope.h"
 #include "indiguiderinterface.h"
-#include "skywatcherAPI.h"
+#include "alignment/AlignmentSubsystemForDrivers.h"
 
 typedef enum { PARK_COUNTERCLOCKWISE = 0, PARK_CLOCKWISE } ParkDirection_t;
 typedef enum { PARK_NORTH = 0, PARK_EAST, PARK_SOUTH, PARK_WEST } ParkPosition_t;
 
 struct GuidingPulse
 {
-    float DeltaAlt { 0 };
-    float DeltaAz { 0 };
+    double DeltaAlt { 0 };
+    double DeltaAz { 0 };
+    int Duration { 0 };
+    int OriginalDuration { 0 };
 };
 
-class SkywatcherAZGTIMount:public SkywatcherAPI,
-        public INDI::Telescope,
-        public INDI::GuiderInterface
+
+class SkywatcherAZGTIMount: public SkywatcherAPI,
+                           public INDI::Telescope,
+                           public INDI::GuiderInterface,public INDI::AlignmentSubsystem::AlignmentSubsystemForDrivers
 {
 public:
     SkywatcherAZGTIMount();
-
-
-    int myFD=-1;
     virtual ~SkywatcherAZGTIMount() = default;
 
     //  overrides of base class virtual functions
@@ -63,10 +65,14 @@ public:
     virtual IPState GuideSouth(uint32_t ms) override;
     virtual IPState GuideEast(uint32_t ms) override;
     virtual IPState GuideWest(uint32_t ms) override;
+    int myFD=-1;
+
 private:
 
    SkywatcherAPI *mount;
 
+    void CalculateGuidePulses();
+    void ConvertGuideCorrection(double delta_ra, double delta_dec, double &delta_alt, double &delta_az);
     void ResetGuidePulses();
     void UpdateScopeConfigSwitch();
 
@@ -216,5 +222,8 @@ private:
     bool VerboseScopeStatus { false };
 
     struct addrinfo *serverInfo;
+    GuidingPulse NorthPulse;
+    GuidingPulse WestPulse;
     std::vector<GuidingPulse> GuidingPulses;
+
 };

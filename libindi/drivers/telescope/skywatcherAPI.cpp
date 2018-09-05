@@ -487,7 +487,7 @@ bool SkywatcherAPI::InitializeMC()
 
 bool SkywatcherAPI:: InitMount(bool recover)
 {
-    //setup_Mount(1);
+
         MYDEBUG(DBG_SCOPE, "InitMount2");
 
     if (!GetMotorBoardVersion(AXIS1))
@@ -495,7 +495,6 @@ bool SkywatcherAPI:: InitMount(bool recover)
 
         MountCode = MCVersion & 0xFF;
         CheckIfDCMotor();
-        //InquireFeatures();
 
 
     // Disable EQ mounts
@@ -508,7 +507,6 @@ bool SkywatcherAPI:: InitMount(bool recover)
 
     //// NOTE: Simulator settings, Mount dependent Settings
 
-        usleep(1000000);
         // Inquire Gear Rate
         GetMicrostepsPerRevolution(AXIS1);
         GetMicrostepsPerRevolution(AXIS2);
@@ -558,9 +556,7 @@ bool SkywatcherAPI:: InitMount(bool recover)
     TurnRAEncoder(false);
     TurnDEEncoder(false);
 
-
-    //setup_Mount(0);
-    return true;
+       return true;
 }
 
 bool SkywatcherAPI::InstantStop(AXISID Axis)

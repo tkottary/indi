@@ -142,18 +142,18 @@ bool SkywatcherAZGTIMount::Connect()
     if (Ret && getActiveConnection()->type() == Connection::Interface::CONNECTION_TCP)
     {
 
+
         //Add check if its UDP. Do we need to , since this works only in UDP now ?
 
         tty_set_skywatcher_udp_format(2);
         PortFD = tcpConnection->getPortFD();
         SetSerialPort(tcpConnection->getPortFD());
 
-        detectScope();
+       if(!detectScope())
+           return false;
 
         bool initMountFromEQ =  InitMount(RecoverAfterReconnection);
         DEBUGF(DBG_SCOPE, "SkywatcherAZGTIMount initMount - Result: %d", initMountFromEQ);
-
-        // not sure why this is required, but this is what the synscan pro app does
 
         if(MountCode>0)
             startTracking();
@@ -162,7 +162,7 @@ bool SkywatcherAZGTIMount::Connect()
 }
 
 
-void SkywatcherAZGTIMount::detectScope(){
+bool SkywatcherAZGTIMount::detectScope(){
 
     int fd=-1;	/* our socket */
     //int sockbufsize = 2048;
@@ -186,15 +186,18 @@ void SkywatcherAZGTIMount::detectScope(){
 
     //fix this hardcoding.
 
-    if ((status = getaddrinfo("192.168.4.1","11880", &hints, &serverInfo)) != 0) {
+    if ((status = getaddrinfo(tcpConnection->host(),tcpConnection->portStr(), &hints, &serverInfo)) != 0) {
         fprintf(stderr, "getaddrinfo error: %s\n", gai_strerror(status));
-        exit(1);
+        return false;
+        //exit(1);
     }
 
     fd = socket(serverInfo->ai_family, serverInfo->ai_socktype, serverInfo->ai_protocol);
     setUdpFd(fd);
 
-    int bindresult= bind(fd, serverInfo->ai_addr, serverInfo->ai_addrlen);
+   int bindValue= bind(fd, serverInfo->ai_addr, serverInfo->ai_addrlen);
+//        if (bindValue<0)
+//           return false;
 
     if (setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(struct timeval))<0){
          DEBUG(DBG_SCOPE, "did not SO_RCVTIMEO ");
@@ -210,7 +213,7 @@ void SkywatcherAZGTIMount::detectScope(){
 //    if (setsockopt(fd, SOL_SOCKET, SO_SNDBUF,(char *)&sockbufsize,  (int)sizeof(sockbufsize))<0){
 //         DEBUG(DBG_SCOPE, "did not SO_SNDBUF ");
 //    };
-
+        return true;
 }
 const char *SkywatcherAZGTIMount::getDefaultName()
 {
@@ -223,10 +226,11 @@ bool SkywatcherAZGTIMount::Goto(double ra, double dec)
 {
     DEBUG(DBG_SCOPE, "SkywatcherAZGTIMount::Goto");
 
+
     if (TrackState != SCOPE_IDLE)
         Abort();
 
-    DEBUGF(DBG_SCOPE, "RA %lf DEC %lf", ra, dec);
+    DEBUGF(INDI::AlignmentSubsystem::DBG_ALIGNMENT, "RA %lf DEC %lf", ra, dec);
 
     if (IUFindSwitch(&CoordSP, "TRACK")->s == ISS_ON || IUFindSwitch(&CoordSP, "SLEW")->s == ISS_ON)
     {
@@ -235,16 +239,75 @@ bool SkywatcherAZGTIMount::Goto(double ra, double dec)
         fs_sexa(DecStr, dec, 2, 3600);
         CurrentTrackingTarget.ra  = ra;
         CurrentTrackingTarget.dec = dec;
-        DEBUGF(INDI::Logger::DBG_SESSION, "New Tracking target RA %s DEC %s", RAStr, DecStr);
+        LOGF_INFO("New Tracking target RA %s DEC %s", RAStr, DecStr);
     }
 
     ln_hrz_posn AltAz { 0, 0 };
+    TelescopeDirectionVector TDV;
 
-    AltAz = GetAltAzPosition(ra, dec);
-    DEBUGF(DBG_SCOPE, "New Altitude %lf degrees %ld microsteps Azimuth %lf degrees %ld microsteps", AltAz.alt,
+    if (TransformCelestialToTelescope(ra, dec, 0.0, TDV))
+    {
+        DEBUGF(INDI::AlignmentSubsystem::DBG_ALIGNMENT, "TDV x %lf y %lf z %lf", TDV.x, TDV.y, TDV.z);
+        AltitudeAzimuthFromTelescopeDirectionVector(TDV, AltAz);
+        DEBUG(INDI::AlignmentSubsystem::DBG_ALIGNMENT, "Conversion OK");
+    }
+    else
+    {
+        // Try a conversion with the stored observatory position if any
+        bool HavePosition = false;
+        ln_lnlat_posn Position { 0, 0 };
+
+        if ((nullptr != IUFindNumber(&LocationNP, "LAT")) && (0 != IUFindNumber(&LocationNP, "LAT")->value) &&
+            (nullptr != IUFindNumber(&LocationNP, "LONG")) && (0 != IUFindNumber(&LocationNP, "LONG")->value))
+        {
+            // I assume that being on the equator and exactly on the prime meridian is unlikely
+            Position.lat = IUFindNumber(&LocationNP, "LAT")->value;
+            Position.lng = IUFindNumber(&LocationNP, "LONG")->value;
+            HavePosition = true;
+        }
+        ln_equ_posn EquatorialCoordinates { 0, 0 };
+
+        // libnova works in decimal degrees
+        EquatorialCoordinates.ra  = ra * 360.0 / 24.0;
+        EquatorialCoordinates.dec = dec;
+        if (HavePosition)
+        {
+#ifdef USE_INITIAL_JULIAN_DATE
+            ln_get_hrz_from_equ(&EquatorialCoordinates, &Position, InitialJulianDate, &AltAz);
+#else
+            ln_get_hrz_from_equ(&EquatorialCoordinates, &Position, ln_get_julian_from_sys(), &AltAz);
+#endif
+            TDV = TelescopeDirectionVectorFromAltitudeAzimuth(AltAz);
+            switch (GetApproximateMountAlignment())
+            {
+                case ZENITH:
+                    break;
+
+                case NORTH_CELESTIAL_POLE:
+                    // Rotate the TDV coordinate system clockwise (negative) around the y axis by 90 minus
+                    // the (positive)observatory latitude. The vector itself is rotated anticlockwise
+                    TDV.RotateAroundY(Position.lat - 90.0);
+                    break;
+
+                case SOUTH_CELESTIAL_POLE:
+                    // Rotate the TDV coordinate system anticlockwise (positive) around the y axis by 90 plus
+                    // the (negative)observatory latitude. The vector itself is rotated clockwise
+                    TDV.RotateAroundY(Position.lat + 90.0);
+                    break;
+            }
+            AltitudeAzimuthFromTelescopeDirectionVector(TDV, AltAz);
+        }
+        else
+        {
+            // The best I can do is just do a direct conversion to Alt/Az
+            TDV = TelescopeDirectionVectorFromEquatorialCoordinates(EquatorialCoordinates);
+            AltitudeAzimuthFromTelescopeDirectionVector(TDV, AltAz);
+        }
+        DEBUGF(INDI::AlignmentSubsystem::DBG_ALIGNMENT, "Conversion Failed - HavePosition %d", HavePosition);
+    }
+    DEBUGF(INDI::AlignmentSubsystem::DBG_ALIGNMENT,
+           "New Altitude %lf degrees %ld microsteps Azimuth %lf degrees %ld microsteps", AltAz.alt,
            DegreesToMicrosteps(AXIS2, AltAz.alt), AltAz.az, DegreesToMicrosteps(AXIS1, AltAz.az));
-    LogMessage("NEW GOTO TARGET: Ra %lf Dec %lf - Alt %lf Az %lf - microsteps %ld %ld", ra, dec, AltAz.alt, AltAz.az,
-               DegreesToMicrosteps(AXIS2, AltAz.alt), DegreesToMicrosteps(AXIS1, AltAz.az));
 
     // Update the current encoder positions
     GetEncoder(AXIS1);
@@ -255,43 +318,23 @@ bool SkywatcherAZGTIMount::Goto(double ra, double dec)
     long AzimuthOffsetMicrosteps =
         DegreesToMicrosteps(AXIS1, AltAz.az) + ZeroPositionEncoders[AXIS1] - CurrentEncoders[AXIS1];
 
-    DEBUGF(DBG_SCOPE, "Initial deltas Altitude %ld microsteps Azimuth %ld microsteps", AltitudeOffsetMicrosteps,
-           AzimuthOffsetMicrosteps);
+    // Do I need to take out any complete revolutions before I do this test?
     if (AltitudeOffsetMicrosteps > MicrostepsPerRevolution[AXIS2] / 2)
     {
         // Going the long way round - send it the other way
         AltitudeOffsetMicrosteps -= MicrostepsPerRevolution[AXIS2];
     }
+
     if (AzimuthOffsetMicrosteps > MicrostepsPerRevolution[AXIS1] / 2)
     {
         // Going the long way round - send it the other way
         AzimuthOffsetMicrosteps -= MicrostepsPerRevolution[AXIS1];
     }
-    if (AltitudeOffsetMicrosteps < -MicrostepsPerRevolution[AXIS2] / 2)
-    {
-        // Going the long way round - send it the other way
-        AltitudeOffsetMicrosteps += MicrostepsPerRevolution[AXIS2];
-    }
-    if (AzimuthOffsetMicrosteps < -MicrostepsPerRevolution[AXIS1] / 2)
-    {
-        // Going the long way round - send it the other way
-        AzimuthOffsetMicrosteps += MicrostepsPerRevolution[AXIS1];
-    }
-    DEBUGF(DBG_SCOPE, "Initial Axis2 %ld microsteps Axis1 %ld microsteps",
-           ZeroPositionEncoders[AXIS2], ZeroPositionEncoders[AXIS1]);
-    DEBUGF(DBG_SCOPE, "Current Axis2 %ld microsteps Axis1 %ld microsteps",
-           CurrentEncoders[AXIS2], CurrentEncoders[AXIS1]);
-    DEBUGF(DBG_SCOPE, "Altitude offset %ld microsteps Azimuth offset %ld microsteps",
-           AltitudeOffsetMicrosteps, AzimuthOffsetMicrosteps);
+    DEBUGF(INDI::AlignmentSubsystem::DBG_ALIGNMENT, "Initial Axis2 %ld microsteps Axis1 %ld microsteps",ZeroPositionEncoders[AXIS2], ZeroPositionEncoders[AXIS1]);
+    DEBUGF(INDI::AlignmentSubsystem::DBG_ALIGNMENT, "Current Axis2 %ld microsteps Axis1 %ld microsteps",CurrentEncoders[AXIS2], CurrentEncoders[AXIS1]);
+    DEBUGF(INDI::AlignmentSubsystem::DBG_ALIGNMENT, "Altitude offset %ld microsteps Azimuth offset %ld microsteps",AltitudeOffsetMicrosteps, AzimuthOffsetMicrosteps);
 
-    if (IUFindSwitch(&SlewModesSP, "SLEW_NORMAL")->s == ISS_ON)
-    {
-        SilentSlewMode = false;
-    }
-    else
-    {
-        SilentSlewMode = true;
-    }
+
     SlewTo(AXIS1, AzimuthOffsetMicrosteps);
     SlewTo(AXIS2, AltitudeOffsetMicrosteps);
 
@@ -511,6 +554,7 @@ bool SkywatcherAZGTIMount::ISNewBLOB(const char *dev, const char *name, int size
     if (dev != nullptr && strcmp(dev, getDeviceName()) == 0)
     {
         // It is for us
+        ProcessAlignmentBLOBProperties(this, name, sizes, blobsizes, blobs, formats, names, n);
     }
     // Pass it up the chain
     return INDI::Telescope::ISNewBLOB(dev, name, sizes, blobsizes, blobs, formats, names, n);
@@ -591,6 +635,7 @@ bool SkywatcherAZGTIMount::ISNewText(const char *dev, const char *name, char *te
     if (dev != nullptr && strcmp(dev, getDeviceName()) == 0)
     {
         // It is for us
+        ProcessAlignmentTextProperties(this, name, texts, names, n);
     }
     // Pass it up the chain
     bool Ret =  INDI::Telescope::ISNewText(dev, name, texts, names, n);
@@ -753,7 +798,9 @@ bool SkywatcherAZGTIMount::MoveWE(INDI_DIR_WE dir, TelescopeMotionCommand comman
         (dir == DIRECTION_WEST) ? GetSlewRate() * LOW_SPEED_MARGIN / 2 : -GetSlewRate() * LOW_SPEED_MARGIN / 2;
     const char *dirStr = (dir == DIRECTION_WEST) ? "West" : "East";
 
-    speed = -speed;
+    if (IsVirtuosoMount()){
+        speed = -speed;
+    }
 
     switch (command)
     {
@@ -1331,6 +1378,21 @@ bool SkywatcherAZGTIMount::updateProperties()
 
         defineNumber(&GuideNSNP);
         defineNumber(&GuideWENP);
+
+        if (InitPark())
+        {
+            // If loading parking data is successful, we just set the default parking values.
+            SetAxis1ParkDefault(LocationN[LOCATION_LATITUDE].value >= 0 ? 0 : 180);
+            SetAxis2ParkDefault(LocationN[LOCATION_LATITUDE].value);
+        }
+        else
+        {
+            // Otherwise, we set all parking data to default in case no parking data is found.
+            SetAxis1Park(LocationN[LOCATION_LATITUDE].value >= 0 ? 0 : 180);
+            SetAxis2Park(LocationN[LOCATION_LATITUDE].value);
+            SetAxis1ParkDefault(LocationN[LOCATION_LATITUDE].value >= 0 ? 0 : 180);
+            SetAxis2ParkDefault(LocationN[LOCATION_LATITUDE].value);
+        }
         return true;
     }
     else
@@ -1487,7 +1549,8 @@ int SkywatcherAZGTIMount::skywatcher_azgti_Write(int fd, const char *buffer, int
     //send the message to server
      int bytesWritten = sendto(fd, buffer, strlen(buffer), 0, serverInfo->ai_addr, serverInfo->ai_addrlen) ;
      *nbytes_written = bytesWritten;
-     DEBUGF(DBG_SCOPE, "bytesSent %d ", bytesWritten);
+     //DEBUGF(DBG_SCOPE, "bytesSent %d ", bytesWritten);
+     return bytesWritten;
 }
 
 int SkywatcherAZGTIMount::skywatcher_azgti_Read(int fd,char *buf,int *nbytes_read){

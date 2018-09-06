@@ -326,7 +326,6 @@ double SkywatcherAPI::get_max_rate()
 bool SkywatcherAPI::GetMicrostepsPerRevolution(AXISID Axis)
 {
 
-    //nanosleep(&timeout, nullptr);
     MYDEBUG(DBG_SCOPE, "GetMicrostepsPerRevolution");
     std::string Parameters, Response;
 
@@ -491,7 +490,7 @@ bool SkywatcherAPI:: InitMount(bool recover)
         MYDEBUG(DBG_SCOPE, "InitMount2");
 
     if (!GetMotorBoardVersion(AXIS1))
-             //return false;
+             return false;
 
         MountCode = MCVersion & 0xFF;
         CheckIfDCMotor();
@@ -997,14 +996,16 @@ bool SkywatcherAPI::TalkWithAxis(AXISID Axis, char Command, std::string &cmdData
             return false;
 
     }else{
-    char response[2048];
-    memset(response, 0, sizeof(response));
+
+          char response[2048];
+          memset(response, 0, sizeof(response));
+
         skywatcher_tty_write(MyPortFD, SendBuffer.c_str(), SendBuffer.size(), &nbytes_written);
         int rc = skywatcher_tty_read(MyPortFD, response, 1, 10, &nbytes_read);
-       if(rc >1){
-        responseStr =response;
-        responseStr.erase(nbytes_read-2);
-       }else{
+        if(rc >1){
+          responseStr =response;
+          responseStr.erase(nbytes_read-2);
+        }else{
 
            //may be retry?
 
@@ -1066,6 +1067,8 @@ void SkywatcherAPI::SetRARate(double rate)
     }
     if (IsInMotion(AXIS1))
     {
+        //throw error here. how?
+
         //if (newstatus.speedmode != RAStatus.speedmode)
             //throw EQModError(EQModError::ErrInvalidParameter, "Can not change rate while motor is running (speedmode differs).");
         //if (newstatus.direction != RAStatus.direction)
@@ -1114,7 +1117,6 @@ void SkywatcherAPI::SetDERate(double rate)
             //throw EQModError(EQModError::ErrInvalidParameter,"Can not change rate while motor is running (direction differs).");
     }
 
-    //StartMotion(AXIS2, newstatus);
         SetMotionMode(AXIS2, newstatus.speedmode, newstatus.direction);
         SetClockTicksPerMicrostep(AXIS2, period);
 }

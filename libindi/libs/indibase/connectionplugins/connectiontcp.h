@@ -59,8 +59,8 @@ class TCP : public Interface
     virtual std::string label() { return "Ethernet"; }
 
     virtual const char *host() { return AddressT[0].text; }
-    virtual uint32_t port() { return atoi(AddressT[0].text); }
-
+    virtual uint32_t port() { return atoi(AddressT[1].text); }
+    virtual const char *portStr(){return (AddressT[1].text) ;}
     virtual bool ISNewText(const char *dev, const char *name, char *texts[], char *names[], int n);
     virtual bool ISNewSwitch(const char *dev, const char *name, ISState *states, char *names[], int n);
     virtual bool saveConfigItems(FILE *fp);

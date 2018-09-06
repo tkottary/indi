@@ -90,7 +90,7 @@ private:
     ln_equ_posn GetRaDecPosition(double alt, double az);
     void LogMessage(const char* format, ...);
 
-    void detectScope();
+    bool detectScope();
     void setUdpFd(int fd);
 
     // Properties
@@ -225,5 +225,10 @@ private:
     GuidingPulse NorthPulse;
     GuidingPulse WestPulse;
     std::vector<GuidingPulse> GuidingPulses;
+
+    /* for use with libnova */
+    struct ln_equ_posn lnradec;
+    struct ln_lnlat_posn lnobserver;
+    struct ln_hrz_posn lnaltaz;
 
 };

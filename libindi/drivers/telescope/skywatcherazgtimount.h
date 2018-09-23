@@ -7,6 +7,13 @@
 typedef enum { PARK_COUNTERCLOCKWISE = 0, PARK_CLOCKWISE } ParkDirection_t;
 typedef enum { PARK_NORTH = 0, PARK_EAST, PARK_SOUTH, PARK_WEST } ParkPosition_t;
 
+#define SKYWATCHER_SIDEREAL_DAY 86164.09053083288
+#define SKYWATCHER_SIDEREAL_SPEED 15.04106864
+
+#define SKYWATCHER_LOWSPEED_RATE 128      // Times Sidereal Speed
+#define SKYWATCHER_HIGHSPEED_RATE 800     // Times Siderdeal Speed
+#define SKYWATCHER_MINSLEW_RATE  0.0001   // Times Sidereal Speed
+#define SKYWATCHER_MAXSLEW_RATE  800      // Times Sidereal Speed
 struct GuidingPulse
 {
     double DeltaAlt { 0 };
@@ -31,6 +38,7 @@ public:
 
     virtual const char *getDefaultName() override;
     virtual bool Goto(double ra, double dec) override;
+    bool EQGoto(double ra, double dec);
     virtual bool initProperties() override;
     virtual bool updateProperties() override;
     virtual void ISGetProperties(const char *dev) override;
@@ -39,6 +47,7 @@ public:
     virtual bool ISNewNumber(const char *dev, const char *name, double values[], char *names[], int n) override;
     virtual bool ISNewSwitch(const char *dev, const char *name, ISState *states, char *names[], int n) override;
     virtual bool ISNewText(const char *dev, const char *name, char *texts[], char *names[], int n) override;
+    virtual bool updateLocation(double latitude, double longitude, double elevation) override;
 
 
     bool startTracking();
@@ -76,6 +85,22 @@ private:
     void ResetGuidePulses();
     void UpdateScopeConfigSwitch();
 
+    double getJulianDate();
+    double getLst(double jd, double lng);
+    double getLongitude();
+    double getLatitude();
+
+    /* Time variables */
+    struct tm utc;
+    struct ln_date lndate;
+    struct timeval lasttimeupdate;
+    struct timespec lastclockupdate;
+    double juliandate;
+
+    double currentRA, currentHA;
+    double currentDEC;
+    double targetRA;
+    double targetDEC;
     // Overrides for the pure virtual functions in SkyWatcherAPI
 
     virtual int skywatcher_tty_read(int fd, char *buf, int nbytes, int timeout, int *nbytes_read) override;
@@ -202,6 +227,30 @@ private:
     ISwitch TrackModeS[3];
     ISwitchVectorProperty TrackModeSP;
 
+    /* Hemisphere */
+    ISwitch HemisphereS[2];
+    ISwitchVectorProperty HemisphereSP;
+
+    enum Hemisphere
+    {
+        NORTH = 0,
+        SOUTH = 1
+    };
+
+    typedef struct GotoParams
+    {
+        double ratarget, detarget, racurrent, decurrent;
+        unsigned long ratargetencoder, detargetencoder, racurrentencoder, decurrentencoder;
+        unsigned long limiteast, limitwest;
+        unsigned int iterative_count;
+        bool forcecwup, checklimits, outsidelimits, completed;
+    } GotoParams;
+
+    Hemisphere Hemisphere;
+    bool RAInverted, DEInverted;
+    bool ForceCwUp = false;
+    GotoParams gotoparams;
+
     // Tracking
     ln_equ_posn CurrentTrackingTarget { 0, 0 };
     long OldTrackingTarget[2] { 0, 0 };
@@ -231,4 +280,10 @@ private:
     struct ln_lnlat_posn lnobserver;
     struct ln_hrz_posn lnaltaz;
 
+
+    void SetSouthernHemisphere(bool southern);
+
+    void HAandDECfromEncoderValues(unsigned long RAEncoder, unsigned long DEEncoder, double &dHA, double &dDec);
+        void EncoderValuesfromHAanDEC(double dHa, double dDec, unsigned long &RAEncoder, unsigned long &DEEncoder);
+     long abs(long a);
 };

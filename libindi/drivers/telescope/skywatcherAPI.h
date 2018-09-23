@@ -25,6 +25,8 @@
 #define SKYWATCHER_STELLAR_DAY    86164.098903691
 #define SKYWATCHER_STELLAR_SPEED  15.041067179
 #define SKYWATCHER_LOWSPEED_RATE 128
+#define SKYWATCHER_HIGHSPEED_RATE 800     // Times Siderdeal Speed
+#define SKYWATCHER_BREAKSTEPS 3500
 
 #include "indibase/inditelescope.h"
 #define MYDEBUG(priority, msg) \
@@ -54,6 +56,7 @@ struct AXISSTATUS
     void SetFullStop();
     void SetSlewing(bool forward, bool highspeed);
     void SetSlewingTo(bool forward, bool highspeed);
+
 };
 
 class SkywatcherAPI
@@ -76,6 +79,12 @@ class SkywatcherAPI
     unsigned long BCDstr2long(std::string &String);
     unsigned long Highstr2long(std::string &String);
     unsigned long Revu24str2long(std::string &String);
+
+
+    unsigned long Revu24str2long(char *); // Converts 4 character HEX number encoded as string to a long value
+    unsigned long Highstr2long2(char *);   // Converts 2 character HEX number encoded as string to a long value
+    void long2Revu24str(unsigned long, char *); // Converts long number to character string
+
     bool CheckIfDCMotor();
 
     /// \brief Check if the current mount is a Virtuoso (AltAz)
@@ -280,6 +289,7 @@ class SkywatcherAPI
     void StartRAGuiding(char trackspeed);
     void StartDEGuiding(char trackspeed);
 
+    int StartTargetSlew(AXISID Axis, long CurrentStep, long TargetStep, long StepsPer360, long MaxStep);
 
     bool SetGuideSpeed(AXISID Axis,char trackspeed);
     void InquireFeatures();
@@ -355,7 +365,7 @@ class SkywatcherAPI
     int MyPortFD { 0 };
     static constexpr double MIN_RATE         = 0.05;
     static constexpr double MAX_RATE         = 800.0;
-
+    unsigned long minperiods[2];
 
     typedef struct SkyWatcherFeatures
     {

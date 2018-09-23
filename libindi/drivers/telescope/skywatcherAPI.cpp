@@ -82,6 +82,7 @@ SkywatcherAPI::SkywatcherAPI()
     SlewingSpeed[AXIS1] = SlewingSpeed[AXIS2] = 0;
 }
 
+
 unsigned long SkywatcherAPI::BCDstr2long(std::string &String)
 {
     if (String.size() != 6)
@@ -368,6 +369,7 @@ bool SkywatcherAPI::GetMicrostepsPerWormRevolution(AXISID Axis)
 
     MicrostepsPerWormRevolution[(int)Axis] = BCDstr2long(Response);
 
+
     return true;
 }
 
@@ -380,6 +382,7 @@ bool SkywatcherAPI::GetMotorBoardVersion(AXISID Axis)
         return false;
 
     unsigned long tmpMCVersion = BCDstr2long(Response);
+
 
      MCVersion = ((tmpMCVersion & 0xFF) << 16) | ((tmpMCVersion & 0xFF00)) | ((tmpMCVersion & 0xFF0000) >> 16);
      MountCode = MCVersion & 0xFF;
@@ -506,16 +509,16 @@ bool SkywatcherAPI:: InitMount(bool recover)
 
     //// NOTE: Simulator settings, Mount dependent Settings
 
-        // Inquire Gear Rate
+        // Inquire Gear Rate  a
         GetMicrostepsPerRevolution(AXIS1);
         GetMicrostepsPerRevolution(AXIS2);
 
-        // Get stepper clock frequency
+        // Get stepper clock frequency  b
         GetStepperClockFrequency(AXIS1);
         GetStepperClockFrequency(AXIS2);
 
 
-        // Inquire motor high speed ratio
+        // Inquire motor high speed ratio g
         GetHighSpeedRatio(AXIS1);
         GetHighSpeedRatio(AXIS2);
 
@@ -527,7 +530,7 @@ bool SkywatcherAPI:: InitMount(bool recover)
         GetMicrostepsPerWormRevolution(AXIS2);
     }
 
-    // Inquire Axis Position
+    // Inquire Axis Position j
         GetEncoder(AXIS1);
         GetEncoder(AXIS2);
         //return false;
@@ -554,8 +557,9 @@ bool SkywatcherAPI:: InitMount(bool recover)
 
     TurnRAEncoder(false);
     TurnDEEncoder(false);
-
-       return true;
+    minperiods[AXIS1] = 6;
+    minperiods[AXIS2] = 6;
+    return true;
 }
 
 bool SkywatcherAPI::InstantStop(AXISID Axis)
@@ -771,10 +775,13 @@ void SkywatcherAPI::Slew(AXISID Axis, double SpeedInRadiansPerSecond, bool Ignor
         HighSpeed     = true;
     }
     long SpeedInt = RadiansPerSecondToClocksTicksPerMicrostep(Axis, InternalSpeed);
+
     if ((MCVersion == 0x010600) || (MCVersion == 0x0010601)) // Cribbed from Mount_Skywatcher.cs
         SpeedInt -= 3;
     if (SpeedInt < 6)
         SpeedInt = 6;
+
+
     SetClockTicksPerMicrostep(Axis, SpeedInt);
 
     StartMotion(Axis);
@@ -785,6 +792,11 @@ void SkywatcherAPI::Slew(AXISID Axis, double SpeedInRadiansPerSecond, bool Ignor
 
 void SkywatcherAPI::SlewTo(AXISID Axis, long OffsetInMicrosteps, bool verbose)
 {
+    double StepsPerSecSiderial = MicrostepsPerRevolution[AXIS1] / SKYWATCHER_SIDEREAL_DAY;
+    double SlowSlewSpeed = StepsPerSecSiderial * SKYWATCHER_LOWSPEED_RATE;
+    double FastSlewSpeed = StepsPerSecSiderial * SKYWATCHER_HIGHSPEED_RATE;
+    double InternalSpeed = FastSlewSpeed;
+
     if (verbose)
     {
         MYDEBUGF(INDI::Logger::DBG_SESSION, "SlewTo axis: %d offset: %ld", (int)Axis, OffsetInMicrosteps);
@@ -807,7 +819,7 @@ void SkywatcherAPI::SlewTo(AXISID Axis, long OffsetInMicrosteps, bool verbose)
     if (OffsetInMicrosteps > 0)
     {
         Forward   = true;
-        Direction = '0';
+        Direction ='0';
     }
     else
     {
@@ -818,9 +830,10 @@ void SkywatcherAPI::SlewTo(AXISID Axis, long OffsetInMicrosteps, bool verbose)
 
     bool HighSpeed = false;
 
-    if (OffsetInMicrosteps > LowSpeedGotoMargin[Axis] && !SilentSlewMode)
+    if (OffsetInMicrosteps > LowSpeedGotoMargin[Axis] && !SilentSlewMode){
         HighSpeed = true;
-
+         InternalSpeed = InternalSpeed / (double)HighSpeedRatio[Axis];
+}
     if (!GetStatus(Axis))
         return;
 
@@ -854,15 +867,97 @@ void SkywatcherAPI::SlewTo(AXISID Axis, long OffsetInMicrosteps, bool verbose)
     else
         SetMotionMode(Axis, '2', Direction);
 
+    long SpeedInt = RadiansPerSecondToClocksTicksPerMicrostep(Axis, InternalSpeed);
+
+    if ((MCVersion == 0x010600) || (MCVersion == 0x0010601)) // Cribbed from Mount_Skywatcher.cs
+        SpeedInt -= 3;
+    if (SpeedInt < 6)
+        SpeedInt = 6;
+
+
+    SetClockTicksPerMicrostep(Axis, SpeedInt);
+
     SetGotoTargetOffset(Axis, OffsetInMicrosteps);
 
     if (HighSpeed)
         SetSlewToModeDeccelerationRampLength(Axis, OffsetInMicrosteps > 3200 ? 3200 : OffsetInMicrosteps);
     else
         SetSlewToModeDeccelerationRampLength(Axis, OffsetInMicrosteps > 200 ? 200 : OffsetInMicrosteps);
+
     StartMotion(Axis);
 
     AxesStatus[Axis].SetSlewingTo(Forward, HighSpeed);
+}
+
+int SkywatcherAPI::StartTargetSlew(AXISID Axis, long CurrentStep, long TargetStep, long StepsPer360, long MaxStep)
+{
+    int err = 0;
+    SkywatcherDirection Direction;
+    int lowspeed = 0;
+    long MovingSteps = 0, LowSpeedGotoMargin;
+    double StepsPerSecSiderial = StepsPer360 / SKYWATCHER_SIDEREAL_DAY;
+    double SlowSlewSpeed = StepsPerSecSiderial * SKYWATCHER_LOWSPEED_RATE;
+    double FastSlewSpeed = StepsPerSecSiderial * SKYWATCHER_HIGHSPEED_RATE;
+    double Sign = 0.0;	 // Need to add time for the move - sign used to determine whether to add or subtract steps to make this happen
+
+    // First determine if moving backwards or forwards
+    MovingSteps = TargetStep - CurrentStep;
+
+    if (MovingSteps > 0) {
+        Direction = FORWARD;
+        //Sign = NorthHemisphere ? 1.0 : - 1.0;
+    }
+    else {
+        Direction = BACKWARD;
+        MovingSteps = -MovingSteps;
+        //Sign = NorthHemisphere ? -1.0 : 1.0;
+    }
+
+
+    // Now determine if close enough for a low speed slew - calculated as is 5s at 128x siderial
+    if (MaxStep == 0) Sign = 0; // No need to add on additional steps for DEC axis.
+    LowSpeedGotoMargin = (int)((float)StepsPer360 * 640.0 / (24.0*3600.0));
+    if (MovingSteps < LowSpeedGotoMargin) {
+        lowspeed = 2; // Goto command 0 is high speed slew, 2 is lowspeed slew
+        // Adjust moving steps to allow for time to slew.
+        MovingSteps += Sign*(MaxStep*1.0 / SlowSlewSpeed)*StepsPerSecSiderial;
+    }
+    else {
+        lowspeed = 0; // Goto command 0 is high speed slew, 2 is lowspeed slew
+        //Adjust moving steps to allow for time to slew
+        MovingSteps += Sign*((MaxStep*1.0 - LowSpeedGotoMargin*1.0) / FastSlewSpeed + LowSpeedGotoMargin / SlowSlewSpeed)*StepsPerSecSiderial;
+    }
+
+    // Subtract m_dDeltaHASteps which is error in last slew in steps
+    //MovingSteps += Sign* m_dDeltaHASteps;
+
+    // Tell mount to do goto with speed and direction
+    //sprintf(command, "%d%d", lowspeed, Direction);
+    //err = SendSkywatcherCommand(SetMotionMode, Axis, command, response, SKYWATCHER_MAX_CMD); if (err) return err;
+
+    //SetMotionMode(Axis,lowspeed,Direction);
+    PrepareForSlewing(Axis, MAX_SPEED);
+
+    SetClockTicksPerMicrostep(Axis, 6);
+
+    // Tell mount the target to move to
+    //long2Revu24str(MovingSteps, command);	// Convert moving steps into string
+    //err = SendSkywatcherCommand(SetGotoTargetIncrement, Axis, command, response, SKYWATCHER_MAX_CMD); if (err) return err;
+    SetGotoTargetOffset(Axis, MovingSteps);
+
+
+    // Set breaksteps for the target - when turns into low speed slew
+    //long2Revu24str(SKYWATCHER_BREAKSTEPS, command); // Convert break steps into string
+    //err = SendSkywatcherCommand(SetBreakPointIncrement, Axis, command, response, SKYWATCHER_MAX_CMD); if (err) return err;
+
+      SetSlewToModeDeccelerationRampLength(Axis, SKYWATCHER_BREAKSTEPS);
+
+
+    // Finally, start the slew
+    //err = SendSkywatcherCommand(StartMotion, Axis, NULL, response, SKYWATCHER_MAX_CMD); if (err) return err;
+    StartMotion(Axis);
+    return err;
+
 }
 
 bool SkywatcherAPI::SlowStop(AXISID Axis)
@@ -999,6 +1094,7 @@ bool SkywatcherAPI::TalkWithAxis(AXISID Axis, char Command, std::string &cmdData
 
           char response[2048];
           memset(response, 0, sizeof(response));
+        int retry =0;
 
         skywatcher_tty_write(MyPortFD, SendBuffer.c_str(), SendBuffer.size(), &nbytes_written);
         int rc = skywatcher_tty_read(MyPortFD, response, 1, 10, &nbytes_read);
@@ -1006,9 +1102,9 @@ bool SkywatcherAPI::TalkWithAxis(AXISID Axis, char Command, std::string &cmdData
           responseStr =response;
           responseStr.erase(nbytes_read-2);
         }else{
-
-           //may be retry?
-
+            //retry++;
+            MYDEBUG(DBG_SCOPE, "no response from mount or -1 , trying again");
+            //skywatcher_tty_read(MyPortFD, response, 1, 10, &nbytes_read);
            return false;
        }
     }
@@ -1069,10 +1165,7 @@ void SkywatcherAPI::SetRARate(double rate)
     {
         //throw error here. how?
 
-        //if (newstatus.speedmode != RAStatus.speedmode)
-            //throw EQModError(EQModError::ErrInvalidParameter, "Can not change rate while motor is running (speedmode differs).");
-        //if (newstatus.direction != RAStatus.direction)
-            //throw EQModError(EQModError::ErrInvalidParameter,"Can not change rate while motor is running (direction differs).");
+
     }
 
     SetMotionMode(AXIS1, motion,direction);
@@ -1137,6 +1230,7 @@ void SkywatcherAPI::StartRATracking(double trackspeed)
     }
     else
         SlowStop(AXIS1);
+
 }
 
 void SkywatcherAPI::StartDETracking(double trackspeed)
@@ -1170,3 +1264,4 @@ void SkywatcherAPI::StartDEGuiding(char  trackspeed)
 
     SetGuideSpeed(AXIS2,trackspeed);
 }
+

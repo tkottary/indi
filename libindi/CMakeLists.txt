@@ -575,6 +575,11 @@ SET(skywatcherazgti_SRC
     ${CMAKE_CURRENT_SOURCE_DIR}/drivers/telescope/skywatcherazgtimount.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/drivers/telescope/skywatcherAPI.cpp)
 
+if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+  set(eqmod_CXX_SRCS ${eqmod_CXX_SRCS}
+    ${CMAKE_CURRENT_SOURCE_DIR}/mach_gettime.cpp)
+endif()
+
 add_executable(indi_skywatcherazgti_telescope ${skywatcherazgti_SRC})
 target_link_libraries(indi_skywatcherazgti_telescope indidriver AlignmentDriver)
 

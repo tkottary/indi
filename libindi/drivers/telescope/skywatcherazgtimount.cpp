@@ -2,7 +2,9 @@
 #include "indicom.h"
 #include "connectionplugins/connectiontcp.h"
 #include <libnova/transform.h>
+#include <libnova/sidereal_time.h>
 #include <libnova/utility.h>
+//#include "mach_gettime.h"
 #include <chrono>
 #include <cstring>
 #include <fstream>
@@ -22,7 +24,6 @@
 // libnova specifies round() on old systems and it collides with the new gcc 5.x/6.x headers
 #define HAVE_ROUND
 /* Preset Slew Speeds */
-#define AZGTIPORT 11880
 #define SLEWMODES 9
 double SlewSpeeds[SLEWMODES] = { 1.0, 2.0, 8.0, 16.0, 32.0, 200.0, 400.0, 600.0,800.0 };
 const int MSG_SIZE = 100;
@@ -94,7 +95,9 @@ SkywatcherAZGTIMount::SkywatcherAZGTIMount()
     SetTelescopeCapability(TELESCOPE_CAN_PARK | TELESCOPE_CAN_SYNC | TELESCOPE_CAN_GOTO | TELESCOPE_CAN_ABORT |TELESCOPE_HAS_TRACK_MODE | TELESCOPE_CAN_CONTROL_TRACK
                                |TELESCOPE_HAS_TIME |TELESCOPE_HAS_LOCATION|TELESCOPE_HAS_PIER_SIDE,
                            SLEWMODES);
-
+    //currentRA  = ln_get_apparent_sidereal_time(ln_get_julian_from_sys());
+    currentRA=0;
+    currentDEC = 90;
 }
 
 bool SkywatcherAZGTIMount::Abort()
@@ -155,7 +158,7 @@ bool SkywatcherAZGTIMount::Connect()
         bool initMountFromEQ =  InitMount(RecoverAfterReconnection);
         DEBUGF(DBG_SCOPE, "SkywatcherAZGTIMount initMount - Result: %d", initMountFromEQ);
 
-        if(MountCode>0)
+        if( MountCode>0 && (IUFindSwitch(&WedgeModeSP, "WEDGE_EQ")->s == ISS_ON))
             startTracking();
 }
     return Ret;
@@ -220,11 +223,232 @@ const char *SkywatcherAZGTIMount::getDefaultName()
     //DEBUG(DBG_SCOPE, "SkywatcherAZGTIMount::getDefaultName\n");
     return "Skywatcher AZ-GTI";
 }
+bool SkywatcherAZGTIMount::EQGoto(double ra,double dec){
+
+    double juliandate=0;
+    double lst=0;
+
+    unsigned long TargetRaStep, TargetDeStep, MaxStep;
+
+    //double datevalues[2];
+    char hrlst[12];
+
+    unsigned long zeroRAEncoder=ZeroPositionEncoders[AXIS1];//8388608
+    unsigned long totalRAEncoder=MicrostepsPerRevolution[AXIS1];
+    unsigned long eastLimit =7941273;//7902228
+    unsigned long westLimit=8890259;//8922056
+
+    juliandate = getJulianDate();
+    lst        = getLst(juliandate, getLongitude());
+    double HA   = rangeHA(ra - lst);
+    fs_sexa(hrlst, lst, 2, 360000);
+    hrlst[11] = '\0';
+    DEBUGF(DBG_SCOPE, "Compute local time: lst=%2.8f (%s) - julian date=%8.8f", lst, hrlst, juliandate);
 
 
+      if ((TrackState == SCOPE_SLEWING) || (TrackState == SCOPE_PARKING) || (TrackState == SCOPE_PARKED)){
+            LOG_WARN("Can not perform goto while goto/park in progress, or scope parked.");
+            EqNP.s = IPS_IDLE;
+            IDSetNumber(&EqNP, nullptr);
+            return true;
+        }
+
+
+
+        //LOGF_INFO("Starting Goto RA=%g DE=%g (current RA=%g DE=%g)", ra, dec, currentRA, currentDEC);
+        targetRA  = ra;
+        targetDEC = dec;
+
+        GetEncoder(AXIS1);
+        GetEncoder(AXIS2);
+        EncoderValuesfromHAanDEC(HA, dec, TargetRaStep, TargetDeStep);
+
+//        // Detemine max step in either RA or DEC - used to calculate time of slew to get more accurate RA position
+            if (abs(TargetRaStep - CurrentEncoders[AXIS1]) > abs(TargetDeStep - CurrentEncoders[AXIS2])) {
+                MaxStep = abs(TargetRaStep - CurrentEncoders[AXIS1]);
+            }
+            else {
+                MaxStep = abs(TargetDeStep - CurrentEncoders[AXIS2]);
+            }
+            StartTargetSlew(AXIS1, CurrentEncoders[AXIS1], TargetRaStep, MicrostepsPerRevolution[AXIS1], MaxStep);
+            StartTargetSlew(AXIS2, CurrentEncoders[AXIS2], TargetDeStep, MicrostepsPerRevolution[AXIS2], 0);
+
+
+                long AltitudeOffsetMicrosteps=  TargetDeStep-CurrentEncoders[AXIS2];
+                long AzimuthOffsetMicrosteps= TargetRaStep-CurrentEncoders[AXIS1];
+
+                // Do I need to take out any complete revolutions before I do this test?
+            if (AltitudeOffsetMicrosteps > MicrostepsPerRevolution[AXIS2] / 2)
+            {
+                // Going the long way round - send it the other way
+                AltitudeOffsetMicrosteps -= MicrostepsPerRevolution[AXIS2];
+            }
+
+            if (AzimuthOffsetMicrosteps > MicrostepsPerRevolution[AXIS1] / 2)
+            {
+                // Going the long way round - send it the other way
+                AzimuthOffsetMicrosteps -= MicrostepsPerRevolution[AXIS1];
+            }
+
+            SlewTo(AXIS1, AzimuthOffsetMicrosteps);
+            SlewTo(AXIS2, AltitudeOffsetMicrosteps);
+
+            LOGF_INFO("AzimuthOffsetMicrosteps AltitudeOffsetMicrosteps   : DE increment = %ld, RA increment = %ld",AltitudeOffsetMicrosteps,AzimuthOffsetMicrosteps);
+            TrackState         = SCOPE_SLEWING;
+            EqNP.s = IPS_BUSY;
+}
+long SkywatcherAZGTIMount::abs(long value)
+{
+    if (value > 0.0) {
+        return value;
+    } else {
+        return -value;
+    }
+}
+void SkywatcherAZGTIMount::EncoderValuesfromHAanDEC(double dHa, double dDec, unsigned long &RAEncoder, unsigned long &DEEncoder)
+{
+
+    long RAStepInit= ZeroPositionEncoders[AXIS1];
+    long DEStepInit =ZeroPositionEncoders[AXIS2];
+    long RASteps360= MicrostepsPerRevolution[AXIS1];
+    long DESteps360= MicrostepsPerRevolution[AXIS1];
+
+    if (Hemisphere ==NORTH) {
+        if (dHa < 0) {	 //	 Pre-Meridian
+            DEEncoder = (int)(DEStepInit + (dDec - 90.0)*DESteps360 / 360.0);
+            RAEncoder = (int)(RAStepInit + (dHa + 6.0)*RASteps360 / 24.0);
+        }
+        else {	// Post-Meridian
+            DEEncoder = (int)(DEStepInit - (dDec - 90.0)*DESteps360 / 360.0);
+            RAEncoder = (int)(RAStepInit + (dHa - 6.0)*RASteps360 / 24.0);
+        }
+    }
+    else {
+        if (dHa < 0) {	 //	 Pre-Meridian
+            DEEncoder = (int)(DEStepInit + (dDec + 90.0)*DESteps360 / 360.0);
+            RAEncoder = (int)(RAStepInit - (dHa + 6.0)*RASteps360 / 24.0);
+        }
+        else {	// Post-Meridian
+            DEEncoder = (int)(DEStepInit - (dDec + 90.0)*DESteps360 / 360.0);
+            RAEncoder = (int)(RAStepInit - (dHa - 6.0)*RASteps360 / 24.0);
+        }
+    }
+}
+
+void SkywatcherAZGTIMount::HAandDECfromEncoderValues(unsigned long RAEncoder, unsigned long DEEncoder, double &dHa, double &dDec)
+{
+    long RAStepInit= ZeroPositionEncoders[AXIS1];
+    long DEStepInit =ZeroPositionEncoders[AXIS2];
+    long RASteps360= MicrostepsPerRevolution[AXIS1];
+    long DESteps360= MicrostepsPerRevolution[AXIS1];
+
+    // Convert from encoder values
+    if (Hemisphere ==NORTH) {
+        if (DEEncoder < DEStepInit) {	  //  Pre-meridian
+            dDec = 90.0 - (DEStepInit*1.0 - DEEncoder*1.0) / (DESteps360*1.0)*360.0;
+            dHa = -6.0 + (RAEncoder*1.0 - RAStepInit*1.0) / (RASteps360*1.0)*24.0;
+        }
+        else {
+            dDec = 90.0 + (DEStepInit*1.0 - DEEncoder*1.0) / (DESteps360*1.0)*360.0;
+            dHa = 6.0 + (RAEncoder*1.0 - RAStepInit*1.0) / (RASteps360*1.0)*24.0;
+        }
+    }
+    else {
+        if (DEEncoder > DEStepInit) {	  //  Pre-meridian
+            dDec = -90.0 - (DEStepInit*1.0 - DEEncoder*1.0) / (DESteps360*1.0)*360.0;
+            dHa = -6.0 - (RAEncoder*1.0 - RAStepInit*1.0) / (RASteps360*1.0)*24.0;
+        }
+        else {
+            dDec = -90.0 + (DEStepInit*1.0 - DEEncoder*1.0) / (DESteps360*1.0)*360.0;
+            dHa = 6.0 - (RAEncoder*1.0 - RAStepInit*1.0) / (RASteps360*1.0)*24.0;
+        }
+
+    }
+}
+
+
+void SkywatcherAZGTIMount::SetSouthernHemisphere(bool southern)
+{
+
+    LOGF_DEBUG("Set southern %s", southern);
+    if (southern)
+        Hemisphere = SOUTH;
+    else
+        Hemisphere = NORTH;
+    RAInverted = (Hemisphere == SOUTH);
+    //UpdateDEInverted();
+    if (Hemisphere == NORTH)
+    {
+        HemisphereS[NORTH].s=ISS_ON;
+        HemisphereS[SOUTH].s=ISS_OFF;
+    }
+    else
+    {
+        HemisphereS[NORTH].s=ISS_OFF;
+        HemisphereS[SOUTH].s=ISS_ON;
+    }
+
+}
+
+
+
+double SkywatcherAZGTIMount::getJulianDate()
+{
+//    struct timespec currentclock, diffclock;
+//    double nsecs;
+//    get_utc_time(&currentclock);
+//    diffclock.tv_sec  = currentclock.tv_sec - lastclockupdate.tv_sec;
+//    diffclock.tv_nsec = currentclock.tv_nsec - lastclockupdate.tv_nsec;
+//    while (diffclock.tv_nsec > 1000000000)
+//    {
+//        diffclock.tv_sec++;
+//        diffclock.tv_nsec -= 1000000000;
+//    }
+//    while (diffclock.tv_nsec < 0)
+//    {
+//        diffclock.tv_sec--;
+//        diffclock.tv_nsec += 1000000000;
+//    }
+
+//    lndate.seconds += (diffclock.tv_sec + ((double)diffclock.tv_nsec / 1000000000.0));
+//    nsecs        = lndate.seconds - floor(lndate.seconds);
+//    utc.tm_sec   = lndate.seconds;
+//    utc.tm_isdst = -1; // let mktime find if DST already in effect in utc
+//    mktime(&utc); // normalize time
+//    ln_get_date_from_tm(&utc, &lndate);
+//    lndate.seconds += nsecs;
+//    lastclockupdate = currentclock;
+//    juliandate      = ln_get_julian_day(&lndate);
+    juliandate=ln_get_julian_from_sys();
+    return juliandate;
+}
+
+double SkywatcherAZGTIMount::getLst(double jd, double lng)
+{
+    double lst;
+    lst = ln_get_apparent_sidereal_time(jd);
+    lst += (lng / 15.0);
+    lst = range24(lst);
+    return lst;
+}
+double SkywatcherAZGTIMount::getLongitude(){
+    double longitude=0;
+    IUGetConfigNumber(getDeviceName(), "GEOGRAPHIC_COORD", "LONG", &longitude);
+    return longitude;
+}
+double SkywatcherAZGTIMount::getLatitude(){
+    return (IUFindNumber(&LocationNP, "LAT")->value);
+}
 bool SkywatcherAZGTIMount::Goto(double ra, double dec)
 {
     DEBUG(DBG_SCOPE, "SkywatcherAZGTIMount::Goto");
+
+
+    if((IUFindSwitch(&WedgeModeSP, "WEDGE_EQ")->s == ISS_ON)){
+        CurrentTrackingTarget.ra  = ra;
+        CurrentTrackingTarget.dec = dec;
+        EQGoto(ra,dec);
+    }else{
 
 
     if (TrackState != SCOPE_IDLE)
@@ -343,6 +567,7 @@ bool SkywatcherAZGTIMount::Goto(double ra, double dec)
     EqNP.s = IPS_BUSY;
 
     return true;
+     }
 }
 
 bool SkywatcherAZGTIMount::initProperties()
@@ -497,6 +722,12 @@ bool SkywatcherAZGTIMount::initProperties()
     IUFillSwitchVector(&UnparkPositionSP, UnparkPosition, 4, getDeviceName(), "UNPARK_POSITION", "Unpark Position",
                        MOTION_TAB, IP_RW, ISR_ATMOST1, 60, IPS_IDLE);
 
+    /* Hemisphere */
+    IUFillSwitch(&HemisphereS[NORTH], "North", "", ISS_ON);
+    IUFillSwitch(&HemisphereS[SOUTH], "South", "", ISS_OFF);
+    IUFillSwitchVector(&HemisphereSP, HemisphereS, 2, getDeviceName(), "HEMISPHERE", "Hemisphere", MOTION_TAB, IP_RO,
+                       ISR_1OFMANY, 0, IPS_IDLE);
+
     // Guiding support
     initGuiderProperties(getDeviceName(), GUIDE_TAB);
     setDriverInterface(getDriverInterface() | GUIDER_INTERFACE);
@@ -510,6 +741,13 @@ bool SkywatcherAZGTIMount::initProperties()
 
     //TurnRAEncoder(false);
     //TurnDEEncoder(false);
+    SetParkDataType(PARK_RA_DEC);
+    double longitude=0, latitude=90;
+    // Get value from config file if it exists.
+    IUGetConfigNumber(getDeviceName(), "GEOGRAPHIC_COORD", "LONG", &longitude);
+    currentRA  = get_local_sidereal_time(longitude);
+    IUGetConfigNumber(getDeviceName(), "GEOGRAPHIC_COORD", "LAT", &latitude);
+    currentDEC = latitude > 0 ? 90 : -90;
 
     return true;
 }
@@ -545,6 +783,7 @@ void SkywatcherAZGTIMount::ISGetProperties(const char *dev)
         defineSwitch(&TrackModeSP);
         defineNumber(&GuideNSNP);
         defineNumber(&GuideWENP);
+        defineSwitch(&HemisphereSP);
     }
 }
 
@@ -986,10 +1225,17 @@ bool SkywatcherAZGTIMount::SetCurrentPark()
 
 bool SkywatcherAZGTIMount::SetDefaultPark()
 {
+
     // By default az to north, and alt to pole
     LOG_DEBUG("Setting Park Data to Default.");
-    SetAxis1Park(0);
-    SetAxis2Park(90);
+
+    // By default set RA to LST
+    SetAxis1Park(get_local_sidereal_time(getLongitude()));
+
+    // Set DEC to 90 or -90 depending on the hemisphere
+    SetAxis2Park((HemisphereS[NORTH].s == ISS_ON) ? 90 : -90);
+
+
 
     return true;
 }
@@ -1029,6 +1275,38 @@ bool SkywatcherAZGTIMount::ReadScopeStatus()
     }
 
     // Calculate new RA DEC
+
+   //Add logic based on EQ or AZ mode
+    if((IUFindSwitch(&WedgeModeSP, "WEDGE_EQ")->s == ISS_ON)){
+        double juliandate=0;
+        double lst=0;
+        juliandate = getJulianDate();
+        lst        = getLst(juliandate, getLongitude());
+
+        double longitude=0, latitude=90;
+        // Get value from config file if it exists.
+        IUGetConfigNumber(getDeviceName(), "GEOGRAPHIC_COORD", "LONG", &longitude);
+        currentRA  = get_local_sidereal_time(longitude);
+
+        const char *maligns[3] = { "ZENITH", "NORTH", "SOUTH" };
+        struct ln_equ_posn RaDec;
+        // Use HA/Dec as  telescope coordinate system
+        RaDec.ra                     = ((lst - currentRA) * 360.0) / 24.0;
+        RaDec.dec                    = currentDEC;
+        TelescopeDirectionVector TDV = TelescopeDirectionVectorFromLocalHourAngleDeclination(RaDec);
+        DEBUGF(INDI::AlignmentSubsystem::DBG_ALIGNMENT,
+               "Status: Mnt. Algnt. %s Date %lf encoders RA=%ld DE=%ld Telescope RA %lf DEC %lf",
+               maligns[GetApproximateMountAlignment()], juliandate, CurrentEncoders[AXIS1], CurrentEncoders[AXIS2], currentRA,
+                currentDEC);
+        DEBUGF(INDI::AlignmentSubsystem::DBG_ALIGNMENT, " Direction RA(deg.)  %lf DEC %lf TDV(x %lf y %lf z %lf)",
+               RaDec.ra, RaDec.dec, TDV.x, TDV.y, TDV.z);
+        //aligned = true;
+        HAandDECfromEncoderValues(CurrentEncoders[AXIS1], CurrentEncoders[AXIS2],currentHA,currentDEC );
+        currentRA = range24(currentHA+lst);
+        NewRaDec(currentRA, currentDEC);
+
+    }else{
+
     ln_hrz_posn AltAz { 0, 0 };
 
     AltAz.alt = MicrostepsToDegrees(AXIS2, CurrentEncoders[AXIS2] - ZeroPositionEncoders[AXIS2]);
@@ -1056,7 +1334,10 @@ bool SkywatcherAZGTIMount::ReadScopeStatus()
                AltAz.alt, AltAz.az, CurrentEncoders[AXIS2]-ZeroPositionEncoders[AXIS2],
                CurrentEncoders[AXIS1]-ZeroPositionEncoders[AXIS1]);
     NewRaDec(RaDec.ra, RaDec.dec);
-    VerboseScopeStatus = false;
+
+    }
+
+    //VerboseScopeStatus = false;
     return true;
 }
 
@@ -1203,20 +1484,17 @@ void SkywatcherAZGTIMount::TimerHit()
             Tracking = true;
             Slewing  = false;
             // Continue or start tracking
+
+
+            if((IUFindSwitch(&WedgeModeSP, "WEDGE_EQ")->s == ISS_ON)){
+
+            }else{
+
+
 //            ln_hrz_posn AltAz { 0, 0 };
             ln_hrz_posn FutureAltAz { 0, 0 };
-
-//            AltAz.alt = MicrostepsToDegrees(AXIS2, CurrentEncoders[AXIS2] - ZeroPositionEncoders[AXIS2]);
-//            AltAz.az = MicrostepsToDegrees(AXIS1, CurrentEncoders[AXIS1] - ZeroPositionEncoders[AXIS1]);
             FutureAltAz = GetAltAzPosition(CurrentTrackingTarget.ra, CurrentTrackingTarget.dec,
                                            (double)TimeoutDuration / 1000);
-//            DEBUGF(DBG_SCOPE,
-//                   "Tracking AXIS1 CurrentEncoder %ld OldTrackingTarget %ld AXIS2 CurrentEncoder %ld OldTrackingTarget "
-//                   "%ld",
-//                   CurrentEncoders[AXIS1], OldTrackingTarget[AXIS1], CurrentEncoders[AXIS2], OldTrackingTarget[AXIS2]);
-//            DEBUGF(DBG_SCOPE,
-//                   "New Tracking Target Altitude %lf degrees %ld microsteps Azimuth %lf degrees %ld microsteps",
-//                   AltAz.alt, DegreesToMicrosteps(AXIS2, AltAz.alt), AltAz.az, DegreesToMicrosteps(AXIS1, AltAz.az));
 
             // Calculate the auto-guiding delta degrees
             for (auto pulse : GuidingPulses)
@@ -1276,10 +1554,6 @@ void SkywatcherAZGTIMount::TimerHit()
             LogMessage("TRACKING: now Alt %lf Az %lf - future Alt %lf Az %lf - microsteps_diff Alt %ld Az %ld",
                        CurrentAltAz.alt, CurrentAltAz.az, FutureAltAz.alt, FutureAltAz.az,
                        AltitudeOffsetMicrosteps, AzimuthOffsetMicrosteps);
-
-//            DEBUGF(DBG_SCOPE, "New Tracking Target AltitudeOffset %ld microsteps AzimuthOffset %ld microsteps",
-//                   AltitudeOffsetMicrosteps, AzimuthOffsetMicrosteps);
-
             if (0 != AzimuthOffsetMicrosteps)
             {
                 SlewTo(AXIS1, AzimuthOffsetMicrosteps, false);
@@ -1307,6 +1581,7 @@ void SkywatcherAZGTIMount::TimerHit()
             OldTrackingTarget[AXIS1] = AzimuthOffsetMicrosteps + CurrentEncoders[AXIS1];
             OldTrackingTarget[AXIS2] = AltitudeOffsetMicrosteps + CurrentEncoders[AXIS2];
             break;
+            }
         }
         break;
         case SCOPE_PARKING:
@@ -1375,24 +1650,32 @@ bool SkywatcherAZGTIMount::updateProperties()
         defineSwitch(&ParkPositionSP);
         defineSwitch(&UnparkPositionSP);
         defineSwitch(&TrackModeSP);
-
+        defineSwitch(&HemisphereSP);
         defineNumber(&GuideNSNP);
         defineNumber(&GuideWENP);
 
         if (InitPark())
         {
             // If loading parking data is successful, we just set the default parking values.
-            SetAxis1ParkDefault(LocationN[LOCATION_LATITUDE].value >= 0 ? 0 : 180);
-            SetAxis2ParkDefault(LocationN[LOCATION_LATITUDE].value);
+            SetAxis1ParkDefault(ZeroPositionEncoders[AXIS1]);
+            SetAxis2ParkDefault(ZeroPositionEncoders[AXIS2]);
         }
         else
         {
             // Otherwise, we set all parking data to default in case no parking data is found.
-            SetAxis1Park(LocationN[LOCATION_LATITUDE].value >= 0 ? 0 : 180);
-            SetAxis2Park(LocationN[LOCATION_LATITUDE].value);
-            SetAxis1ParkDefault(LocationN[LOCATION_LATITUDE].value >= 0 ? 0 : 180);
-            SetAxis2ParkDefault(LocationN[LOCATION_LATITUDE].value);
+            SetAxis1Park(ZeroPositionEncoders[AXIS1]);
+            SetAxis2Park(ZeroPositionEncoders[AXIS2]);
+            SetAxis1ParkDefault(ZeroPositionEncoders[AXIS1]);
+            SetAxis2ParkDefault(ZeroPositionEncoders[AXIS2]);
         }
+
+
+      if(LocationN[LOCATION_LATITUDE].value <0.0){
+            SetSouthernHemisphere(true);
+
+        }else{
+            SetSouthernHemisphere(false);
+         }
         return true;
     }
     else
@@ -1530,11 +1813,13 @@ void SkywatcherAZGTIMount::ResetGuidePulses()
 
 int SkywatcherAZGTIMount::skywatcher_tty_read(int fd, char *buf, int nbytes, int timeout, int *nbytes_read)
 {
+        INDI_UNUSED(fd); INDI_UNUSED(timeout);INDI_UNUSED(nbytes);
       return skywatcher_azgti_Read(myFD,buf,nbytes_read);
 }
 
 int SkywatcherAZGTIMount::skywatcher_tty_write(int fd, const char *buffer, int nbytes, int *nbytes_written)
 {
+    INDI_UNUSED(fd); INDI_UNUSED(nbytes);
     return skywatcher_azgti_Write(myFD,buffer,nbytes_written);
 
 }
@@ -1818,7 +2103,32 @@ ln_hrz_posn SkywatcherAZGTIMount::GetAltAzPosition(double ra, double dec, double
     return AltAz;
 }
 
+bool SkywatcherAZGTIMount::updateLocation(double latitude, double longitude, double elevation)
+{
+    INDI_UNUSED(elevation);
+    UpdateLocation(latitude, longitude, elevation);
 
+// INDI Longitude is 0 to 360 increasing EAST. libnova East is Positive, West is negative
+    if (longitude > 180){
+        longitude -= 360;
+        lnobserver.lng=longitude;
+    }
+
+    lnobserver.lat=latitude;
+
+    char l[32]={0}, L[32]={0};
+    fs_sexa(l, latitude, 3, 3600);
+    fs_sexa(L, longitude, 4, 3600);
+
+    if((IUFindSwitch(&WedgeModeSP, "WEDGE_EQ")->s == ISS_ON)){
+        SetApproximateMountAlignmentFromMountType(EQUATORIAL);
+    }
+
+
+    LOGF_INFO("Site location updated to Lat %.32s - Long %.32s", l, L);
+
+    return true;
+}
 ln_equ_posn SkywatcherAZGTIMount::GetRaDecPosition(double alt, double az)
 {
     ln_lnlat_posn Location { 0, 0 };
